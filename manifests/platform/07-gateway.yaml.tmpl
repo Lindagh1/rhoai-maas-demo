@@ -1,0 +1,56 @@
+# MaaS Gateway. Templated (envsubst) so we never hardcode this sandbox's
+# domain name -- CLUSTER_DOMAIN and CERT_NAME are discovered at apply time
+# from the live cluster (see scripts/bootstrap.sh).
+#
+# Required annotations per official RHOAI 3.5 docs
+# ("Gateway requirements for Models-as-a-Service"):
+#   - opendatahub.io/managed: "false"  -- lets the maas-controller manage
+#     authorization policies on this Gateway without the ODH Model Controller
+#     overwriting them.
+#   - security.opendatahub.io/authorino-tls-bootstrap: "true" -- makes the
+#     MaaS controller create the EnvoyFilter needed for TLS between the
+#     Gateway and Authorino.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: maas-default-gateway
+  namespace: openshift-ingress
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+  annotations:
+    opendatahub.io/managed: "false"
+    security.opendatahub.io/authorino-tls-bootstrap: "true"
+spec:
+  gatewayClassName: openshift-default
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: maas-gateway-options
+  listeners:
+    - name: http
+      hostname: ${MAAS_HOSTNAME}
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              maas.opendatahub.io/gateway-access: "true"
+    - name: https
+      hostname: ${MAAS_HOSTNAME}
+      port: 443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              maas.opendatahub.io/gateway-access: "true"
+      tls:
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: ${CERT_NAME}
+        mode: Terminate

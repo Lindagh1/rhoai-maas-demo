@@ -1,0 +1,19 @@
+# Publishes the demo simulator to Models-as-a-Service. This is the CR that
+# the RHOAI dashboard's "Publish as MaaS" checkbox creates for you; here it's
+# declarative/GitOps. Lives in the model's own namespace (per official docs
+# CLI reference: "Publish a model by creating a MaaSModelRef resource that
+# references your deployed inference server").
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSModelRef
+metadata:
+  name: demo-simulator
+  namespace: rhoai-maas-demo
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+  annotations:
+    openshift.io/display-name: "MaaS Demo Simulator"
+    openshift.io/description: "CPU-only llm-d-inference-sim, used to demonstrate MaaS governance without any GPU/vLLM workload."
+spec:
+  modelRef:
+    kind: LLMInferenceService
+    name: demo-simulator

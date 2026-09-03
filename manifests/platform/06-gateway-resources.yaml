@@ -1,0 +1,32 @@
+# OOM prevention (per user instruction / RHOAI MaaS companion guide).
+#
+# The Istio default proxy memory limit (1Gi) is insufficient once Kuadrant's
+# Wasm extensions (Authorino auth-check, Limitador rate-limit) are compiled
+# into the Envoy sidecar at startup, which can OOMKill the gateway pod.
+#
+# This ConfigMap is referenced by Gateway.spec.infrastructure.parametersRef
+# (see 07-gateway.yaml.tmpl). Because the override lives in the Gateway spec
+# rather than a one-off `oc patch deployment`, it survives Istio's
+# reconciliation of the generated gateway Deployment -- patching the
+# Deployment directly would be reverted on the next reconcile.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maas-gateway-options
+  namespace: openshift-ingress
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+          - name: istio-proxy
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: "2"
+                memory: 2Gi

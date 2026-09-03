@@ -1,0 +1,27 @@
+# Pre-creates the Authorino authorization Service with a service-ca annotation
+# so that when the Kuadrant operator reconciles the Kuadrant CR and creates the
+# real Authorino Service, OpenShift's service-ca-operator auto-generates a TLS
+# certificate into the "authorino-server-cert" Secret. This implements official
+# RHOAI 3.5 docs section "Configure TLS for Models-as-a-Service", step 1.
+apiVersion: v1
+kind: Service
+metadata:
+  name: authorino-authorino-authorization
+  namespace: kuadrant-system
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: authorino-server-cert
+spec:
+  selector:
+    authorino-resource: authorino
+  ports:
+    - name: grpc
+      port: 50051
+      protocol: TCP
+      targetPort: 50051
+    - name: http
+      port: 5001
+      protocol: TCP
+      targetPort: 5001
+  type: ClusterIP

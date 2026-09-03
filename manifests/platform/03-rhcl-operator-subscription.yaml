@@ -1,0 +1,17 @@
+# Red Hat Connectivity Link (RHCL) operator subscription.
+# Installs the Kuadrant operator (which in turn manages Authorino + Limitador)
+# into the shared openshift-operators namespace, matching the official RHOAI
+# 3.5 MaaS prerequisite: "Red Hat Connectivity Link Operator version 1.4.x".
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhcl-operator
+  namespace: openshift-operators
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+spec:
+  channel: stable
+  name: rhcl-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

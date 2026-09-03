@@ -1,0 +1,17 @@
+# GatewayClass for the OpenShift Gateway API controller.
+#
+# This cluster already has two Accepted GatewayClasses using the same
+# controller (data-science-gateway-class, openshift-ai-inference), but neither
+# is named "openshift-default" and both are owned by other components. Rather
+# than repurpose someone else's GatewayClass, we create our own dedicated one
+# -- exactly as named in the official MaaS companion guide
+# (manifests/02-platform-config/gatewayclass.yaml). This is additive only: it
+# does not modify or delete any existing GatewayClass.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: openshift-default
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+spec:
+  controllerName: "openshift.io/gateway-controller/v1"

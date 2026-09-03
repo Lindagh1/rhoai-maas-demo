@@ -1,0 +1,16 @@
+# Kuadrant CR. Reconciling this triggers the Kuadrant operator to install the
+# Authorino (authentication) and Limitador (rate limiting) components that
+# MaaS uses for API-key auth and token quota enforcement.
+apiVersion: kuadrant.io/v1beta1
+kind: Kuadrant
+metadata:
+  name: kuadrant
+  namespace: kuadrant-system
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+spec:
+  # Observability lets Kuadrant create its own Limitador/Authorino
+  # PodMonitor/ServiceMonitor resources, scraped by User Workload Monitoring.
+  # Required for MaaS to expose token/request/rate-limit metrics.
+  observability:
+    enable: true

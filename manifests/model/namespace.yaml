@@ -1,0 +1,14 @@
+# Dedicated namespace for everything this demo's model side creates. Shows up
+# as a normal Data Science Project in the RHOAI dashboard. Labeled for MaaS
+# Gateway route binding (maas.opendatahub.io/gateway-access) since the
+# maas-default-gateway only accepts HTTPRoutes from explicitly labeled
+# namespaces (least-privilege by design, see official docs "Gateway
+# requirements for Models-as-a-Service").
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rhoai-maas-demo
+  labels:
+    opendatahub.io/dashboard: "true"
+    maas.opendatahub.io/gateway-access: "true"
+    app.kubernetes.io/part-of: rhoai-maas-demo

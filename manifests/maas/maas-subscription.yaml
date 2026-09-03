@@ -1,0 +1,27 @@
+# Subscription-based quota (RHOAI 3.4+ replaces the old tier-based model).
+# Grants every authenticated user (system:authenticated) quota to call the
+# demo simulator, capped at 100 tokens/minute -- low enough to trip the
+# demo-rate-limit target (make demo-rate-limit) within a handful of small,
+# sequential requests, per official docs section "Token limits".
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: maas-demo-subscription
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+  annotations:
+    openshift.io/display-name: "MaaS Demo Subscription"
+    openshift.io/description: "Demo subscription: 100 tokens/min for all authenticated users on the demo simulator."
+spec:
+  owner:
+    groups:
+      - name: system:authenticated
+    users: []
+  modelRefs:
+    - name: demo-simulator
+      namespace: rhoai-maas-demo
+      tokenRateLimits:
+        - limit: 100
+          window: 1m
+  priority: 0

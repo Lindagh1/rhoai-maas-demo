@@ -1,0 +1,19 @@
+# Minimal PostgreSQL 16 instance for MaaS API-key lifecycle management.
+# OpenShift AI does not ship a database; the official docs and companion
+# guide require the cluster admin to provision one. This is intentionally
+# small (20Gi PVC, 1 replica) -- it is demo/POC-grade, matching the companion
+# guide's own "purpose: poc" label, not a production HA database.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: redhat-ods-applications
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: rhoai-maas-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
