@@ -109,17 +109,102 @@ Pre-existing, unrelated Pending pods (openshift-storage cephcsi ctrlplugins,
 age 4d21h, present before this install) — not caused by this change.
 ```
 
+## Phase 2 — all components activated, all dashboard features made visible
+
+After the base install above, every DataScienceCluster component and every
+OdhDashboardConfig feature flag was turned on, per an explicit follow-up
+request. Three extra dependency operators had to be installed along the way
+to satisfy component preconditions:
+
+| Extra operator | Namespace | Why |
+|---|---|---|
+| `rhcl-operator` (Red Hat Connectivity Link, v1.4.2) | `openshift-operators` | Kserve `LLMInferenceService` dependency (`KserveLLMInferenceServiceDependencies`) |
+| `leader-worker-set` (Red Hat build of LWS, v1.0.0) | `openshift-lws-operator` (OwnNamespace only) | Kserve `LLMInferenceService` Wide-EP dependency |
+| `kueue-operator` (Red Hat build of Kueue, v1.4.1) | `openshift-operators` | Backs `DataScienceCluster.spec.components.kueue` |
+| `job-set` (JobSet Operator, v1.0.0 — package name is **`job-set`**, not `jobset`) | `openshift-jobset-operator` (OwnNamespace only) | Required precondition for the `trainer` component ("JobSet operator not installed"). After install, also requires creating a `JobSetOperator/cluster` CR with `managementState: Managed` (per Red Hat's own [JobSet Operator docs](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/ai_workloads/jobset-operator)). |
+
+All three were readily available in the mirrored `redhat-operators`
+CatalogSource on this sandbox — no extra catalog/mirror configuration
+needed.
+
+### Gotchas hit while enabling every component
+
+1. **`kueue.managementState: Managed` is rejected.** Same issue as the base
+   install — only `Unmanaged`/`Removed` are accepted at runtime. Set to
+   `Unmanaged` (integrates with the separately-installed `kueue-operator`
+   instead of RHOAI trying to manage its lifecycle).
+2. **`ogx=Managed` conflicts with `llamastackoperator=Managed`.** Reconciler
+   error: `"LlamaStackOperator is set to Managed; it has been deprecated,
+   set it to Removed before enabling OGX"`. `llamastackoperator` is
+   deprecated in favor of `ogx` (Gen AI Studio) — set to `Removed`.
+3. **`aigateway` has nested submodules with their own `managementState`.**
+   `spec.components.aigateway.modelsAsAService.managementState` and
+   `spec.components.aigateway.batchGateway.managementState` must each be
+   set to `Managed` individually — setting only the parent
+   `aigateway.managementState: Managed` left `ModelsAsAServiceReady` and
+   `BatchGatewayReady` at `False` ("Submodule ManagementState is set to
+   Removed").
+4. **Trainer requires the JobSet Operator, which is not in the default
+   OperatorHub search results under the obvious name.** The RHOAI operator
+   logs (`oc logs -n redhat-ods-operator deploy/rhods-operator`) reported
+   `"JobSet operator not installed, please install it first"`. The
+   `PackageManifest` is named **`job-set`** (hyphenated), not `jobset` —
+   easy to miss when searching the catalog.
+5. **`OdhDashboardConfig` rejects writes to 3 deprecated fields.**
+   `disableAcceleratorProfiles`, `disableHardwareProfiles`, and
+   `disableFineTuning` must be *omitted entirely* (not even set to their
+   current value) — the admission webhook error is explicit: `"must be
+   removed or left unchanged"`.
+
+### Final result — everything `Ready`
+
+```
+DataScienceCluster/default-dsc: phase=Ready
+  ALL 24 status conditions = True, including:
+    AIGatewayReady, BatchGatewayReady, ModelsAsAServiceReady   (MaaS + Gen AI Gateway)
+    FeastOperatorReady, MLflowOperatorReady, SparkOperatorReady
+    MCPLifecycleOperatorReady, OGXReady (Gen AI Studio)
+    TrainerReady (needed JobSet Operator)
+    KserveLLMInferenceServiceDependencies = True   (Connectivity Link satisfied)
+    KserveLLMInferenceServiceWideEPDependencies = True  (LeaderWorkerSet satisfied)
+    DashboardReady, WorkbenchesReady, KserveReady, AIPipelinesReady,
+    ModelRegistryReady, KueueReady, TrainingOperatorReady, TrustyAIReady,
+    RayReady
+
+DSC components (spec, final state):
+  Managed:   dashboard, workbenches, kserve, aipipelines, modelregistry,
+             trainingoperator, trustyai, ray, feastoperator, mlflowoperator,
+             sparkoperator, mcplifecycleoperator, trainer, ogx, aigateway
+             (+ aigateway.modelsAsAService, aigateway.batchGateway)
+  Unmanaged: kueue (integrates with the separate kueue-operator)
+  Removed:   llamastackoperator (deprecated, superseded by ogx)
+
+OdhDashboardConfig: all ~35 disable* flags = false, all ~29 feature flags =
+true (full list: manifests/rhoai-operator/08-dashboard-config.yaml).
+
+Pods across redhat-ods-applications, openshift-operators, openshift-lws-operator,
+openshift-jobset-operator: 100% Running, 0 unexpected restarts (one
+workbenches-operator pod shows restarts=1 from its own early startup, not a
+crash loop).
+
+Node usage after full activation: CPU 25% (8.0/32 cores), Memory 25%
+(32.9Gi/125.8Gi) -- still comfortable headroom on this sandbox.
+```
+
 ## Conclusion
 
-**RHOAI 3.5 installs and reconciles successfully on this sandbox**, despite
-the two "unsupported configuration" caveats above (OCP 4.22.11 vs. the
-4.19–4.20 support matrix, and node RAM ~98% of the documented SNO minimum).
-The dashboard, workbenches, KServe (RawDeployment), Data Science Pipelines,
-Model Registry, Training Operator, TrustyAI, and Ray components are all
-`Ready`. This is **not a Red Hat–supported combination** for production use,
-but it is functionally usable for demos/testing on this sandbox.
+**RHOAI 3.5 installs and reconciles successfully on this sandbox, with every
+single DataScienceCluster component enabled and every OdhDashboardConfig
+feature flag turned on/visible** — despite the two "unsupported
+configuration" caveats noted earlier (OCP 4.22.11 vs. the official 4.19–4.20
+support matrix, and node RAM ~98% of the documented SNO minimum). This is
+**not a Red Hat–supported combination** for production use, but it is fully
+functional for demos/testing on this sandbox, with real headroom to spare
+(25% CPU / 25% RAM used after activating everything).
 
-Not attempted here (out of scope for "is a base install possible"):
-MaaS gateway exposure (needs MetalLB or a Route/NodePort alternative to the
-cloud LoadBalancer used in the other sandbox's demo), Kueue, Connectivity
-Link/Kuadrant, GPU-backed model serving (no GPU on this node).
+Genuinely out of scope / not attempted: MaaS **gateway exposure** to the
+outside world (needs MetalLB or a Route/NodePort alternative to the cloud
+LoadBalancer used in the other sandbox's demo — the DSC-level MaaS
+components (`aigateway`, `modelsAsAService`) are enabled and `Ready`, but no
+`Gateway`/`GatewayClass` has been created here), and GPU-backed model
+serving (no GPU on this node).

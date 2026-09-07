@@ -20,8 +20,13 @@ spec:
     modelregistry:
       managementState: Managed
       registriesNamespace: rhoai-model-registries
+    # kueue.managementState only accepts Unmanaged/Removed on this operator
+    # version ("Managed" is rejected by the admission webhook -- kept in the
+    # enum only for OLM upgrade backwards-compatibility). Unmanaged lets the
+    # DSC integrate with the separately-installed kueue-operator (RHBOK)
+    # instead of trying to manage its lifecycle itself.
     kueue:
-      managementState: Removed
+      managementState: Unmanaged
     trainingoperator:
       managementState: Managed
     trustyai:
@@ -29,18 +34,26 @@ spec:
     ray:
       managementState: Managed
     feastoperator:
-      managementState: Removed
+      managementState: Managed
     mlflowoperator:
-      managementState: Removed
+      managementState: Managed
     sparkoperator:
-      managementState: Removed
+      managementState: Managed
+    # llamastackoperator is DEPRECATED and superseded by ogx -- the operator
+    # actively rejects ogx=Managed while llamastackoperator=Managed
+    # ("set it to Removed before enabling OGX"). Removed here since ogx is
+    # enabled below.
     llamastackoperator:
       managementState: Removed
     mcplifecycleoperator:
-      managementState: Removed
+      managementState: Managed
     trainer:
-      managementState: Removed
+      managementState: Managed
     ogx:
-      managementState: Removed
+      managementState: Managed
     aigateway:
-      managementState: Removed
+      managementState: Managed
+      modelsAsAService:
+        managementState: Managed
+      batchGateway:
+        managementState: Managed
