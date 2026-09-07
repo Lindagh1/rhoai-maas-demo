@@ -1,0 +1,62 @@
+# Namespace-scoped copy of the redhat-ods-applications/kserve-ovms Template
+# (OpenVINO Model Server), exactly what the dashboard's "Deploy model"
+# wizard instantiates in the project when you select the "OpenVINO Model
+# Server" serving runtime for an onnx-1 model.
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: kserve-ovms
+  namespace: fraud-detection
+  annotations:
+    openshift.io/display-name: OpenVINO Model Server
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/template-name: kserve-ovms
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: ovms
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8888"
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhoai/odh-openvino-model-server-rhel9@sha256:b448359fe46ee2c2c840b79bf0036cf1d813451be2f789d2cd1af18875cc8e8c
+      args:
+        - --model_name={{.Name}}
+        - --port=8001
+        - --rest_port=8888
+        - --model_path=/mnt/models
+        - --file_system_poll_wait_seconds=0
+        - --metrics_enable
+      ports:
+        - containerPort: 8888
+          protocol: TCP
+      resources:
+        requests:
+          cpu: "1"
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+  multiModel: false
+  protocolVersions:
+    - v2
+    - grpc-v2
+  supportedModelFormats:
+    - name: openvino_ir
+      version: opset13
+      autoSelect: true
+    - name: onnx
+      version: "1"
+    - name: tensorflow
+      version: "1"
+      autoSelect: true
+    - name: tensorflow
+      version: "2"
+      autoSelect: true
+    - name: paddle
+      version: "2"
+      autoSelect: true
+    - name: pytorch
+      version: "2"
+      autoSelect: true

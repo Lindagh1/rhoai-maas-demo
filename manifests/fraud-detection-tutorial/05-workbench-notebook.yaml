@@ -1,0 +1,90 @@
+# Workbench "fraud-detection": Jupyter | Tensorflow | CUDA | Python 3.12,
+# version 2025.2, hardware profile "default-profile" (2 CPU / 4Gi), with the
+# "My Storage" connection attached (envFrom secretRef: my-storage), exactly
+# matching Chapter 3.1 "Create a workbench" of the tutorial.
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: fraud-detection
+  namespace: fraud-detection
+  labels:
+    app: fraud-detection
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+  annotations:
+    notebooks.opendatahub.io/inject-oauth: "true"
+    notebooks.opendatahub.io/last-image-selection: tensorflow:2025.2
+    notebooks.opendatahub.io/last-size-selection: default-profile
+    opendatahub.io/accelerator-name: ""
+    opendatahub.io/hardware-profile-name: default-profile
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/image-display-name: "Tensorflow"
+    openshift.io/description: "Fraud detection tutorial workbench"
+    openshift.io/display-name: "fraud-detection"
+    opendatahub.io/username: "admin"
+spec:
+  template:
+    spec:
+      affinity: {}
+      enableServiceLinks: false
+      containers:
+        - name: fraud-detection
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/tensorflow:2025.2
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          envFrom:
+            - secretRef:
+                name: my-storage
+          env:
+            - name: NOTEBOOK_ARGS
+              value: |-
+                --ServerApp.port=8888
+                --ServerApp.token=''
+                --ServerApp.password=''
+                --ServerApp.base_url=/notebook/fraud-detection/fraud-detection
+                --ServerApp.quit_button=False
+            - name: JUPYTER_IMAGE
+              value: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/tensorflow:2025.2
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          readinessProbe:
+            httpGet:
+              path: /notebook/fraud-detection/fraud-detection/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /notebook/fraud-detection/fraud-detection/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: fraud-detection
+            - mountPath: /dev/shm
+              name: shm
+      volumes:
+        - name: fraud-detection
+          persistentVolumeClaim:
+            claimName: fraud-detection
+        - name: shm
+          emptyDir:
+            medium: Memory

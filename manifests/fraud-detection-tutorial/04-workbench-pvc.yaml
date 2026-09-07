@@ -1,0 +1,18 @@
+# Cluster storage for the "fraud-detection" workbench (tutorial default: 20Gi).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fraud-detection
+  namespace: fraud-detection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    openshift.io/description: ""
+    openshift.io/display-name: "fraud-detection"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem

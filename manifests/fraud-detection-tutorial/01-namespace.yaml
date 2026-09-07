@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fraud-detection
+  annotations:
+    openshift.io/description: "Fraud detection tutorial (RHOAI 3.5 official tutorial)"
+    openshift.io/display-name: "Fraud detection"
+  labels:
+    kubernetes.io/metadata.name: fraud-detection
+    opendatahub.io/dashboard: "true"
+    modelmesh-enabled: "true"
