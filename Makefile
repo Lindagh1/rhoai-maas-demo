@@ -1,4 +1,7 @@
-.PHONY: preflight bootstrap status infer demo-auth demo-rate-limit validate test-idempotency cleanup pdf
+.PHONY: install-rhoai-operator preflight bootstrap status infer demo-auth demo-rate-limit validate test-idempotency cleanup pdf
+
+install-rhoai-operator:
+	@./scripts/install-rhoai-operator.sh
 
 preflight:
 	@./scripts/preflight.sh
