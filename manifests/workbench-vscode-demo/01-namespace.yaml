@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vscode-demo
+  annotations:
+    openshift.io/description: "Demo Data Science Project for a VS Code (code-server) workbench"
+    openshift.io/display-name: "VS Code Demo"
+  labels:
+    kubernetes.io/metadata.name: vscode-demo
+    opendatahub.io/dashboard: "true"
