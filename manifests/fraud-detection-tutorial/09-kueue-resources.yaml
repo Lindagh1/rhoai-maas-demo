@@ -1,0 +1,32 @@
+# Chapter 2.5 "(Optional) Set up Kueue resources" -- required before running
+# the Ray (6_distributed_training.ipynb) or Training Operator
+# (7_distributed_training_kfto.ipynb) notebooks in Chapter 6. Copied verbatim
+# from the tutorial's own "Import YAML" snippet.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: default-flavor
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: cluster-queue
+spec:
+  namespaceSelector: {}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory"]
+      flavors:
+        - name: "default-flavor"
+          resources:
+            - name: "cpu"
+              nominalQuota: 4
+            - name: "memory"
+              nominalQuota: 8Gi
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: local-queue
+  namespace: fraud-detection
+spec:
+  clusterQueue: cluster-queue
