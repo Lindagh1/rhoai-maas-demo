@@ -1,0 +1,77 @@
+# MaaS demo model - facebook/opt-125m, CPU-only, ~125M parameters.
+#
+# WHY A SEPARATE TINY MODEL INSTEAD OF THE EXISTING llama-32-3b-instruct:
+# The user asked to reuse the existing Llama 3.2 3B model "if possible" and to NOT
+# deploy another LARGE model. Investigation showed:
+#   - The existing model is a classic KServe InferenceService (serving.kserve.io/v1beta1),
+#     internal ClusterIP only (no Route), GPU-backed, currently Ready and used by the
+#     Data Scientist RAG persona demo.
+#   - MaaS on this RHOAI 3.5.0 build only routes traffic to models of kind
+#     LLMInferenceService (serving.kserve.io, the new v1alpha1/v1alpha2 CRD) or
+#     ExternalModel (for genuinely external OpenAI/Anthropic/Bedrock-style HTTPS APIs).
+#   - There is no supported, documented, in-place way to convert/attach an existing
+#     classic InferenceService to a Gateway-API-based MaaS route. Doing so would require
+#     recreating the model under the new CRD kind, which risks disrupting the
+#     currently-Ready, demo-critical Llama deployment.
+#   - The ExternalModel path is designed for public HTTPS providers (endpoint pattern
+#     requires an FQDN) and is not a documented fit for an internal, HTTP-only,
+#     cluster-local KServe service.
+# Decision: leave llama-32-3b-instruct completely untouched (still available for the RAG
+# demo), and deploy this tiny CPU-only opt-125m model - NOT "another large model" - solely
+# to prove the MaaS gateway/auth/rate-limit pipeline end-to-end with a real, live inference
+# call. LLMInferenceService itself IS a documented, first-class RHOAI 3.5 GA mechanism:
+# see the official v3-5-0-kserve-config-llm-* LLMInferenceServiceConfig presets already
+# installed in redhat-ods-applications by the KServe component.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: LLMInferenceService
+metadata:
+  name: facebook-opt-125m-cpu
+  namespace: llm
+spec:
+  model:
+    uri: hf://facebook/opt-125m
+    name: facebook/opt-125m
+  replicas: 1
+  router:
+    route: {}
+    gateway:
+      refs:
+        - name: maas-default-gateway
+          namespace: openshift-ingress
+  template:
+    containers:
+      - name: main
+        image: quay.io/pierdipi/vllm-cpu:latest
+        env:
+          - name: VLLM_LOGGING_LEVEL
+            value: INFO
+        resources:
+          limits:
+            cpu: '2'
+            memory: 10Gi
+          requests:
+            cpu: '500m'
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTPS
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30

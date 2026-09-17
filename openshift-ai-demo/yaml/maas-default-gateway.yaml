@@ -1,0 +1,37 @@
+# maas-default-gateway - required by MaaS (aigateway.modelsAsAService) before enabling it.
+# Must exist in openshift-ingress BEFORE aigateway.modelsAsAService is set to Managed.
+# Annotations are required by the MaaS controller docs:
+#   opendatahub.io/managed: "false"                        -> lets maas-controller own AuthPolicies here
+#   security.opendatahub.io/authorino-tls-bootstrap: "true" -> triggers Gateway<->Authorino TLS (EnvoyFilter)
+# TLS cert reused from the cluster's existing valid Let's Encrypt wildcard cert
+# (cert-manager-ingress-cert, *.apps.ocp.tfmbf.sandbox2633.opentlc.com) - no new cert issuance needed.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: maas-default-gateway
+  namespace: openshift-ingress
+  annotations:
+    opendatahub.io/managed: "false"
+    security.opendatahub.io/authorino-tls-bootstrap: "true"
+spec:
+  gatewayClassName: openshift-default
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: "maas.apps.ocp.tfmbf.sandbox2633.opentlc.com"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: cert-manager-ingress-cert

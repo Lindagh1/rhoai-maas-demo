@@ -1,0 +1,55 @@
+---
+# Dummy credential — the real backend (llama-32-3b-instruct predictor) has
+# security.opendatahub.io/enable-auth: "false", so this key is never actually
+# validated by vLLM. It exists only to satisfy ExternalProvider.spec.auth,
+# which is a required field in this MaaS build.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llama-32-3b-instruct-external-auth
+  namespace: models-as-a-service
+type: Opaque
+stringData:
+  api_key: "not-used-backend-has-no-auth"
+---
+apiVersion: inference.opendatahub.io/v1alpha1
+kind: ExternalProvider
+metadata:
+  name: llama-32-3b-instruct-provider
+  namespace: models-as-a-service
+spec:
+  provider: self-hosted-vllm
+  # In-cluster ClusterIP service for the existing, already-running
+  # llama-32-3b-instruct InferenceService in the my-first-model namespace.
+  # Reused as-is — no new model was deployed.
+  endpoint: llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local
+  auth:
+    type: apikey
+    secretRef:
+      name: llama-32-3b-instruct-external-auth
+---
+apiVersion: inference.opendatahub.io/v1alpha1
+kind: ExternalModel
+metadata:
+  name: llama-32-3b-instruct-external
+  namespace: models-as-a-service
+spec:
+  modelName: llama-32-3b-instruct
+  externalProviderRefs:
+    - ref:
+        name: llama-32-3b-instruct-provider
+      apiFormat: openai-chat
+      path: /v1/chat/completions
+      targetModel: llama-32-3b-instruct
+      weight: 1
+---
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSModelRef
+metadata:
+  name: llama-32-3b-instruct-maas
+  namespace: models-as-a-service
+spec:
+  modelRef:
+    kind: ExternalModel
+    name: llama-32-3b-instruct-external
+  # tenantRef omitted -> assigned to the default tenant

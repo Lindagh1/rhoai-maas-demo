@@ -1,0 +1,39 @@
+---
+# Grants any authenticated OpenShift user access to the reused llama-32-3b-instruct
+# model through MaaS. Using the built-in "system:authenticated" group keeps this
+# to the smallest safe configuration for a temporary demo sandbox (no new users/
+# groups to create or clean up), while still demonstrating real governance.
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: llama-32-3b-instruct-access
+  namespace: models-as-a-service
+spec:
+  modelRefs:
+    - name: llama-32-3b-instruct-maas
+      namespace: models-as-a-service
+  subjects:
+    groups:
+      - name: "system:authenticated"
+---
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: llama-32-3b-instruct-subscription
+  namespace: models-as-a-service
+spec:
+  owner:
+    groups:
+      - name: "system:authenticated"
+  priority: 1
+  modelRefs:
+    - name: llama-32-3b-instruct-maas
+      namespace: models-as-a-service
+      tokenRateLimits:
+        - limit: 100000
+          window: 1h
+      billingRate:
+        perToken: "0"
+  tokenMetadata:
+    costCenter: demo
+    organizationId: rhoai-3-5-demo

@@ -1,0 +1,11 @@
+# Enables the "llm" namespace for MaaS tenant resources (MaaSAuthPolicy/MaaSSubscription).
+# Discovered requirement: the vmaasauthpolicy.kb.io / vmaassubscription.kb.io admission
+# webhooks reject those kinds in any namespace that does not have its own MaasTenantConfig
+# CR. Creating one here is the minimal, documented-by-CRD-contract way to "enable" this
+# namespace, using empty/default spec (no custom API key expiry or telemetry overrides).
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaasTenantConfig
+metadata:
+  name: default-tenant
+  namespace: llm
+spec: {}

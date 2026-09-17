@@ -1,0 +1,41 @@
+# OGXServer — Knowledge Advisor RAG orchestration server
+#
+# Provides a single OpenAI-compatible surface (OGX / Llama Stack API) in front
+# of:
+#   - inference:  the shared llama-32-3b-instruct vLLM predictor (chat/completions)
+#                 and the all-minilm-l6-v2 vLLM predictor (embeddings)
+#   - vector_io:  the knowledge-advisor pgvector-db Postgres instance
+#   - storage:    sqlite (KV + SQL) for OGX's own operational metadata
+#
+# CREATED VIA: YAML/CLI REQUIRED — the OpenShift AI 3.5 dashboard does not
+# expose an OGXServer creation wizard in this build. The dashboard DOES show
+# the resulting server (Gen AI Studio recognizes the running OGXServer's
+# models once created) — see DEMO-CLICKBOOK.md for the exact navigation.
+#
+# See knowledge-advisor-ogx-baseconfig.yaml for why this uses overrideConfig
+# instead of the native spec.providers/spec.storage fields (two sandbox-
+# specific platform gaps: registry auth for OCI-label resolution, and a
+# missing `persistence` field in the operator's declarative pgvector
+# provider mapping).
+apiVersion: ogx.io/v1beta1
+kind: OGXServer
+metadata:
+  name: knowledge-advisor-ogx
+  namespace: knowledge-advisor
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  distribution:
+    name: rh
+  overrideConfig:
+    name: knowledge-advisor-ogx-override-config
+    key: config.yaml
+  workload:
+    replicas: 1
+    overrides:
+      env:
+        - name: OGX_PGVECTOR_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pgvector-db-credentials
+              key: POSTGRES_PASSWORD

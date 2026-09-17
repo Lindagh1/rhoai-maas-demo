@@ -1,0 +1,98 @@
+# PostgreSQL 16 + pgvector for knowledge-advisor
+# Uses the official pre-built pgvector/pgvector:pg16 image (no in-cluster build required —
+# a prior attempt to build a custom image via Dockerfile/BuildConfig failed and was removed).
+# Reuses the pre-existing Secret `pgvector-db-credentials` (POSTGRES_USER=ragadmin, POSTGRES_DB=ragdb).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgvector-db-init
+  namespace: knowledge-advisor
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE DATABASE ogx;
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgvector-db-data
+  namespace: knowledge-advisor
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: gp3-csi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgvector-db
+  namespace: knowledge-advisor
+  labels:
+    app: pgvector-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgvector-db
+  template:
+    metadata:
+      labels:
+        app: pgvector-db
+    spec:
+      containers:
+        - name: postgresql
+          image: docker.io/pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: pgvector-db-credentials
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ragadmin", "-d", "ragdb"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ragadmin", "-d", "ragdb"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pgvector-db-data
+        - name: init-script
+          configMap:
+            name: pgvector-db-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgvector-db
+  namespace: knowledge-advisor
+  labels:
+    app: pgvector-db
+spec:
+  selector:
+    app: pgvector-db
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432

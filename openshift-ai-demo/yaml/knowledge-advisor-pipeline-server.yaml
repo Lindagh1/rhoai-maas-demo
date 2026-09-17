@@ -1,0 +1,29 @@
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  namespace: knowledge-advisor
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  dspVersion: v2
+  apiServer:
+    deploy: true
+    enableSamplePipeline: false
+  database:
+    mariaDB:
+      deploy: true
+  objectStorage:
+    externalStorage:
+      host: minio.knowledge-advisor.svc.cluster.local
+      port: "9000"
+      scheme: http
+      secure: false
+      bucket: pipelines
+      basePath: artifacts
+      s3CredentialsSecret:
+        secretName: pipeline-artifacts
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+  mlmd:
+    deploy: true

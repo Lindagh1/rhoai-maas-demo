@@ -1,0 +1,115 @@
+# Knowledge Advisor — Streamlit application
+#
+# End-user facing RAG app: embed -> retrieve (pgvector) -> generate
+# (llama-32-3b-instruct). Uses the same s2i-generic-data-science-notebook
+# base image as the workbench so no custom image build is required;
+# streamlit is installed at container start (PyPI is reachable from this
+# cluster).
+#
+# CREATED VIA: YAML/CLI REQUIRED for the Deployment/Service/Route
+# themselves (OpenShift AI dashboard does not have a generic "deploy my own
+# web app" wizard) — but every backend call this app makes (embedding,
+# pgvector, LLM) is the SAME thing you already showed working from the
+# dashboard/Workbench earlier in the demo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-advisor-streamlit
+  namespace: knowledge-advisor
+  labels:
+    app: knowledge-advisor-streamlit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: knowledge-advisor-streamlit
+  template:
+    metadata:
+      labels:
+        app: knowledge-advisor-streamlit
+    spec:
+      containers:
+        - name: streamlit
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.5
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              pip install --quiet streamlit==1.* && \
+              mkdir -p /opt/app-root/src/app && \
+              cp /mnt/app/app.py /opt/app-root/src/app/app.py && \
+              exec streamlit run /opt/app-root/src/app/app.py \
+                --server.port=8080 --server.address=0.0.0.0 \
+                --server.headless=true --browser.gatherUsageStats=false
+          ports:
+            - containerPort: 8080
+          env:
+            - name: EMBED_URL
+              value: http://all-minilm-l6-v2-predictor.my-first-model.svc.cluster.local:8080/v1/embeddings
+            - name: EMBED_MODEL
+              value: all-minilm-l6-v2
+            - name: LLM_URL
+              value: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1/chat/completions
+            - name: LLM_MODEL
+              value: llama-32-3b-instruct
+            - name: DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: vector-database
+                  key: URI
+          volumeMounts:
+            - name: app-src
+              mountPath: /mnt/app
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8080
+            initialDelaySeconds: 25
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 20
+      volumes:
+        - name: app-src
+          configMap:
+            name: knowledge-advisor-streamlit-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-advisor-streamlit
+  namespace: knowledge-advisor
+  labels:
+    app: knowledge-advisor-streamlit
+spec:
+  selector:
+    app: knowledge-advisor-streamlit
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: knowledge-advisor-streamlit
+  namespace: knowledge-advisor
+  labels:
+    app: knowledge-advisor-streamlit
+spec:
+  to:
+    kind: Service
+    name: knowledge-advisor-streamlit
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

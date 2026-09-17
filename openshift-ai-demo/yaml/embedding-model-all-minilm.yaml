@@ -1,0 +1,78 @@
+# Embedding model deployment — all-MiniLM-L6-v2 (CPU-only, no GPU)
+# Reuses the vLLM CPU (x86) ServingRuntime template already installed on the cluster,
+# and a pre-built public ModelCar OCI image from the same catalog used for Llama.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: all-minilm-l6-v2
+  namespace: my-first-model
+  labels:
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"
+  annotations:
+    modelFormat: vLLM
+    opendatahub.io/hardware-profile-name: default-profile
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    openshift.io/display-name: all-minilm-l6-v2
+    openshift.io/description: "Small CPU embedding model (sentence-transformers/all-MiniLM-L6-v2, 384-dim) for RAG semantic search"
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: Standard
+spec:
+  predictor:
+    automountServiceAccountToken: false
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat:
+        name: vLLM
+      name: ""
+      runtime: all-minilm-l6-v2
+      storageUri: oci://quay.io/redhat-ai-services/modelcar-catalog:all-minilm-l6-v2
+      args:
+        - --gpu-memory-utilization=0.4
+      resources:
+        requests:
+          cpu: "1"
+          memory: 3Gi
+        limits:
+          cpu: "2"
+          memory: 8Gi
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: all-minilm-l6-v2
+  namespace: my-first-model
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/kserve-runtime: vllm
+    opendatahub.io/template-name: vllm-cpu-x86-runtime-template
+    opendatahub.io/template-display-name: "vLLM CPU (x86) ServingRuntime for KServe"
+    openshift.io/display-name: "vLLM CPU (x86) ServingRuntime for KServe"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: vllm
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhaii/vllm-cpu-rhel9@sha256:578e9946e60a14596185937f6a083c1d42f3cff343b18648090b9ac80691d2e0
+      command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+      args:
+        - --port=8080
+        - --model=/mnt/models
+        - --served-model-name={{.Name}}
+      env:
+        - name: HF_HOME
+          value: /tmp/hf_home
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+  multiModel: false
+  supportedModelFormats:
+    - name: vLLM
+      autoSelect: true
