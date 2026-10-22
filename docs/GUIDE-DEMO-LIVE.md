@@ -1,168 +1,187 @@
-# Guide démo live — Demo 1 (très pédagogique)
+# Guide démo live — Demo 1 (pitch console OpenShift AI)
 
-**Public :** client / audience non experte  
+**Public :** client / décideur / audience non technique  
 **Durée cible :** 8–12 minutes  
+**Règle d’or :** tout se passe dans la **console OpenShift AI** (navigateur).  
+Pas de terminal pendant le pitch. L’installation CLI est faite **avant**, en coulisses ([guide d’installation](GUIDE-INSTALLATION-DEMO1.md)).
+
 **Message unique à retenir :**
 
-> « Sur OpenShift AI, on déploie un modèle en natif avec llm-d, puis on le **publie** dans Models-as-a-Service — sans bricolage ExternalModel. »
-
-Prépare l’installation avec [`GUIDE-INSTALLATION-DEMO1.md`](GUIDE-INSTALLATION-DEMO1.md) **avant** d’être en salle.
+> « Avec OpenShift AI, un admin déploie un modèle génératif en natif, le publie en Models-as-a-Service depuis la console, et prépare la gouvernance d’accès — sans collage de YAML devant le client. »
 
 ---
 
-## Avant d’entrer en scène (2 minutes)
+## Avant d’entrer en scène (console uniquement)
 
-Ouvre **deux onglets** déjà connectés :
-
-1. **Dashboard RHOAI**  
-   `https://rhods-dashboard-redhat-ods-applications.<domaine>`
-2. **Terminal** (optionnel, pour 30 secondes de preuve CLI)
-
-Vérifie vite :
-
-```bash
-oc get llminferenceservice,maasmodelref -n rhoai-maas-demo
-```
-
-Tu veux voir le modèle `demo-simulator` et le `MaaSModelRef` du même nom.
+1. Ouvre **un seul onglet** : le dashboard RHOAI, déjà connecté.  
+   `https://rhods-dashboard-redhat-ods-applications.<domaine-du-cluster>`
+2. Vérifie visuellement (sans terminal) :
+   - Menu **Projects** → projet **`rhoai-maas-demo`** existe
+   - Onglet **Deployments** → déploiement **`demo-simulator`** visible / Ready
+3. Ferme tout terminal / `oc` / VS Code pour ne pas être tenté.
 
 ---
 
-## Fil rouge (à dire une fois)
+## Fil rouge (à dire une fois, 20 s)
 
-Dessine mentalement (ou sur un slide) :
+Montre avec la main / un slide simple :
 
 ```text
-  [Admin plateforme]
-         │
-         ▼
-  LLMInferenceService     ← déploiement natif llm-d
-         │
-         ▼
-  MaaSModelRef            ← « publier dans MaaS »
-         │
-         ▼
-  Catalogue / gouvernance MaaS
-         │
-         ▼
-  (Demo 2) utilisateurs, clés API, quotas
+Console OpenShift AI
+        │
+        ├─ 1. Projet data science
+        ├─ 2. Déployer le modèle (llm-d natif)
+        ├─ 3. Publier comme MaaS  ← case « Publish as MaaS »
+        └─ 4. Retrouver le modèle dans Gen AI studio
+                 │
+                 └─ (Demo 2) clés API, abonnements, quotas
 ```
 
-Dis clairement : **aujourd’hui = Demo 1 uniquement** (publication).  
-Les clés API et quotas = **prochaine démo**.
+Dis clairement : **aujourd’hui = Demo 1** (déployer + publier).  
+Les clés API et quotas utilisateurs = **Demo 2**.
 
 ---
 
-## Parcours clics (pas à pas)
+## Parcours clics (pitch)
 
-### Étape 0 — Accueil dashboard (30 s)
+### Étape 0 — Accueil console (20 s)
 
-1. Affiche la page d’accueil RHOAI.  
+1. Affiche la home OpenShift AI.  
 2. Phrase type :
 
-> « C’est le cockpit OpenShift AI. Tout ce qu’on va montrer est administrable ici, et aussi en GitOps / CLI. »
+> « Voici le cockpit OpenShift AI. C’est depuis cette console qu’un admin plateforme pilote les projets, les modèles et Models-as-a-Service. »
 
-Ne reste pas sur l’accueil.
+Passe tout de suite au menu de gauche.
 
 ---
 
-### Étape 1 — Le projet de démo (1 min)
+### Étape 1 — Le projet (1 min)
 
-1. Menu de gauche → **Data Science Projects** (ou **Projets**).  
+1. Menu gauche → **Projects**.  
 2. Clique sur **`rhoai-maas-demo`**.  
 3. Phrase type :
 
-> « On isole la démo dans son propre projet. On ne touche pas aux autres modèles déjà présents sur le cluster. »
+> « On travaille dans un projet data science dédié. Ça isole la démo : on ne mélange pas avec les autres workloads du cluster. »
 
-**Si on te demande le modèle GPU legacy :**  
-« Il tourne toujours dans `my-first-model`. On l’a volontairement laissé intact. »
+Si quelqu’un mentionne un autre projet (ex. `my-first-model`) :
 
----
-
-### Étape 2 — Montrer le modèle natif (3 min) — moment clé
-
-1. Dans le projet, ouvre la section **Models** / **Model deployments** / déploiements de modèles  
-   (le libellé exact peut varier légèrement selon la build 3.5).  
-2. Sélectionne **`demo-simulator`**.  
-3. Fais voir que c’est un **`LLMInferenceService`** (chemin **llm-d**), pas un vieux `InferenceService` KServe classique.
-
-**Phrase pédagogique (à ne pas rater) :**
-
-> « Deux façons d’exposer un modèle à MaaS :  
-> 1) **natif** : le modèle vit déjà sur le cluster en `LLMInferenceService` — c’est ce qu’on montre ;  
-> 2) **externe** : on pointe vers un fournisseur cloud — utile, mais ce n’est pas le sujet aujourd’hui. »
-
-4. Si l’UI montre le statut : souligne **Ready** / disponible.
-
-**Note honnête si on te demande “c’est quel LLM ?” :**
-
-> « Ici on utilise un simulateur CPU llm-d pour démontrer le **mécanisme de publication**, sans monopoliser le GPU unique du sandbox. Le même bouton / le même CR marchent pour un vrai modèle instruct sur GPU. »
+> « On le laisse tel quel. Aujourd’hui on montre le parcours MaaS natif dans notre projet. »
 
 ---
 
-### Étape 3 — Publication MaaS (3 min) — second moment clé
+### Étape 2 — Les déploiements de modèles (2–3 min) — moment clé nº1
 
-Deux façons de raconter (choisis **une** selon le temps) :
+1. Dans le projet, ouvre l’onglet **Deployments**.  
+2. Montre la liste : le déploiement **`demo-simulator`**.  
+3. Clique dessus pour ouvrir le détail.  
+4. Fais voir le statut (**Ready** / disponible).
 
-#### Option A — Récit “bouton dashboard” (idéal commercial)
+**Phrase pédagogique :**
 
-1. Montre l’endroit **Publish as MaaS** / publication MaaS dans l’écran du modèle (s’il est visible).  
-2. Explique :
+> « Ce déploiement utilise le chemin **natif llm-d** (`LLMInferenceService`) — pensé pour les modèles génératifs et pour s’intégrer à la gateway MaaS.  
+> Ce n’est pas l’ancienne méthode “legacy” KServe classique. »
 
-> « Cocher Publish as MaaS crée un objet `MaaSModelRef` qui enregistre le modèle dans la couche Models-as-a-Service. »
+**Si on demande “c’est quel gros LLM ?” :**
 
-3. Ajoute la transparence :
-
-> « Dans cette sandbox, on l’a déjà créé en déclaratif (CLI/Git), **exactement le même objet** que le bouton aurait créé. »
-
-#### Option B — Preuve CLI (idéal technique, 20 s)
-
-Dans le terminal déjà ouvert :
-
-```bash
-oc get maasmodelref demo-simulator -n rhoai-maas-demo -o yaml | head -40
-```
-
-Montre surtout :
-
-```yaml
-spec:
-  modelRef:
-    kind: LLMInferenceService
-    name: demo-simulator
-```
-
-> « Même namespace que le modèle. Kind = LLMInferenceService. C’est la preuve que c’est le chemin natif. »
-
-Si le `phase` est `Pending` avec un message du type *Awaiting governance pairing* :
-
-> « Normal en Demo 1 : le backend est sain (`RuntimeReady`). L’accès utilisateurs (abonnement + politique) arrive en Demo 2. »
+> « Sur ce sandbox on illustre le **parcours console** avec un déploiement léger. Le même assistant de déploiement et la même case Publish as MaaS s’appliquent à un vrai modèle instruct sur GPU. »
 
 ---
 
-### Étape 4 — Où ça se voit côté MaaS / Gen AI (2 min)
+### Étape 3 — Montrer comment on publie en MaaS (3–4 min) — moment clé nº2
 
-1. Navigue vers l’UI MaaS / Gen AI Studio / catalogue modèles (selon les flags du cluster).  
-2. Cherche l’entrée liée à **`demo-simulator`** / alias publié.  
+Tu as deux façons, selon que le modèle est déjà publié ou non.
+
+#### Cas A — Le modèle est déjà publié (sandbox déjà installée)
+
+1. Reste sur le détail du déploiement **`demo-simulator`**.  
+2. Cherche l’indication de disponibilité / publication MaaS (libellé du type **Publish as MaaS** / Model availability / Models-as-a-Service).  
 3. Phrase type :
 
-> « Une fois publié, le modèle entre dans le périmètre gouverné MaaS : c’est à partir de là qu’on pourra abonner des groupes, délivrer des clés, et appliquer des quotas — Demo 2. »
+> « Publier comme MaaS, c’est dire à la plateforme : ce modèle entre dans le catalogue gouverné. Derrière, OpenShift AI enregistre la publication pour que les admins puissent ensuite abonner des équipes. »
 
-Ne lance **pas** de `curl` avec clé API en Demo 1 (hors scope).
+4. Enchaîne tout de suite à l’étape 4 (Gen AI studio) pour **prouver** que c’est visible côté catalogue.
+
+#### Cas B — Tu veux rejouer le geste “comme un admin” (idéal commercial)
+
+Si tu as le temps et un second nom de déploiement disponible (ou une réinstall propre) :
+
+1. Toujours dans **Projects** → ton projet → onglet **Deployments**.  
+2. Clique **Deploy model**.  
+3. Dans l’assistant :
+   - Type : **Generative AI model** (ex. LLM)  
+   - **Ne coche pas** « Use legacy deployment method »  
+   - Déploiement : **Distributed inference with llm-d**  
+   - Hardware profile adapté  
+4. Dans les réglages avancés / **Model availability** : coche **Publish as MaaS**.  
+5. Review → Deploy.
+
+Phrase type :
+
+> « Un seul parcours console : déployer en llm-d **et** publier en MaaS. Pas besoin d’ouvrir un terminal devant le client. »
+
+> **Note honnête :** sur beaucoup de sandboxes le GPU est déjà pris. Si le wizard ne peut pas déployer un vrai LLM GPU en live, reste sur le Cas A (modèle déjà Ready) et montre la case / le résultat de publication — le message business est le même.
 
 ---
 
-### Étape 5 — Clôture (1 min)
+### Étape 4 — Retrouver le modèle dans Gen AI studio (2–3 min)
 
-Récap en 3 puces à l’oral :
+1. Menu gauche → **Gen AI studio**.  
+2. Clique **AI asset endpoints**.  
+3. Onglet **Models** : cherche **`demo-simulator`** (ou le nom déployé).  
+4. Clique **View** dans la colonne **Endpoints**.  
+5. Montre le badge **Model as a Service** en haut de la boîte de dialogue.
 
-1. **Déployer** en natif avec `LLMInferenceService` (llm-d)  
-2. **Publier** avec `MaaSModelRef`  
-3. **Gouverner** l’accès ensuite (Demo 2)
+Phrase type :
+
+> « Voilà la preuve côté utilisateur / catalogue : le modèle publié porte le badge Models-as-a-Service. On voit l’endpoint, et plus tard — Demo 2 — on générera des clés API et on appliquera des abonnements. »
+
+Montre rapidement (sans cliquer jusqu’au bout si hors scope) :
+
+- le sélecteur de subscription  
+- le bouton **Generate API key**  
+
+Puis dis :
+
+> « On s’arrête ici volontairement : délivrance de clés, quotas et révocation, c’est la Demo 2. »
+
+---
+
+### Étape 5 — Optionnel : teaser admin MaaS (30–60 s)
+
+Si le menu admin MaaS est visible (Subscriptions / Authorization policies) :
+
+1. Montre l’entrée de menu sans tout configurer.  
+2. Phrase :
+
+> « Côté admin, on gouverne qui a droit à quoi. On le déroulera dans la Demo 2. »
+
+Ne crée **pas** de subscription en Demo 1 si tu n’es pas prêt à assumer Demo 2.
+
+---
+
+### Étape 6 — Clôture (1 min)
+
+Récap oral en 3 gestes console :
+
+1. **Projects** → projet dédié  
+2. **Deployments** → modèle llm-d + **Publish as MaaS**  
+3. **Gen AI studio → AI asset endpoints** → badge **Model as a Service**
 
 Question de transition :
 
-> « Voulez-vous qu’on enchaîne sur le parcours utilisateur : clé API, quota, révocation ? »
+> « On enchaîne sur le parcours utilisateur : clé API, playground, quota ? »
+
+---
+
+## Aide-mémoire 1 page (2ᵉ écran / post-it)
+
+```text
+1. Projects → rhoai-maas-demo
+2. Deployments → demo-simulator (Ready, llm-d natif)
+3. Expliquer / montrer Publish as MaaS
+4. Gen AI studio → AI asset endpoints → View
+5. Badge « Model as a Service » + teaser clés API (Demo 2)
+```
 
 ---
 
@@ -170,44 +189,33 @@ Question de transition :
 
 | À éviter | Pourquoi |
 |---|---|
-| Modifier `my-first-model` | Risque de casser le GPU / une autre démo |
-| Activer `vLLMDeploymentOnMaaS` | Technology Preview — pas le message GA |
-| Promettre un “vrai” LLM 70B sur 1× L4 | Capacité insuffisante |
-| Dire “c’est Ready pour les users” sans Demo 2 | Faux : il manque subscription + auth policy |
-| Coller un token / secret à l’écran | Sécurité |
+| Ouvrir un terminal / coller du `oc` | Cassure du récit “tout est dans la console” |
+| Modifier un autre projet (ex. modèle GPU legacy) | Risque de casser le sandbox |
+| Activer / vanter vLLM-on-MaaS | Technology Preview — pas le message GA |
+| Générer une clé API et faire un curl | C’est la Demo 2 |
+| Promettre un LLM 70B sur 1 GPU L4 | Capacité sandbox insuffisante |
+| Dire “les users peuvent déjà consommer en prod” | Il manque encore abonnements + politiques (Demo 2) |
 
 ---
 
-## Aide-mémoire une page (imprime / 2ᵉ écran)
+## FAQ express (réponses console)
 
-```text
-1. Data Science Projects → rhoai-maas-demo
-2. Models → demo-simulator  (= LLMInferenceService natif)
-3. Expliquer Publish as MaaS / montrer MaaSModelRef
-4. Montrer la présence côté MaaS UI
-5. Teaser Demo 2 : clés + quotas
-```
+**Q : On peut tout faire sans ligne de commande ?**  
+R : Oui pour le pitch admin : wizard Deployments + Publish as MaaS + Gen AI studio. L’install plateforme se fait une fois avant la démo.
 
-Commandes de secours :
+**Q : Différence avec un modèle “classique” déjà sur le cluster ?**  
+R : Ici on montre le chemin **génératif llm-d** + publication MaaS dans la console, pas l’ancien déploiement legacy.
 
-```bash
-oc get llminferenceservice -n rhoai-maas-demo
-oc get maasmodelref -n rhoai-maas-demo
-oc get dsc default-dsc -o jsonpath='{.status.conditions[?(@.type=="ModelsAsAServiceReady")].status}{"\n"}'
-```
+**Q : Pourquoi je ne vois pas encore mon équipe consommer le modèle ?**  
+R : Publication ≠ accès utilisateur. L’accès gouverné (subscriptions, clés, quotas) = Demo 2, toujours dans la console (Gen AI studio / API keys).
+
+**Q : Et si le bouton Publish as MaaS n’apparaît pas ?**  
+R : La plateforme MaaS / les flags dashboard n’ont pas été activés. Revenir au [guide d’installation](GUIDE-INSTALLATION-DEMO1.md) **avant** la séance client — pas pendant.
 
 ---
 
-## FAQ express
+## Annexe (hors pitch) — secours technique
 
-**Q : C’est quoi la différence avec le modèle déjà installé sur le sandbox ?**  
-R : L’existant est souvent un `InferenceService` “classique”. Ici on montre le chemin **llm-d natif** + publication MaaS.
+À utiliser **uniquement** si la console est indisponible, jamais devant le client :
 
-**Q : Pourquoi un simulateur ?**  
-R : 1 GPU déjà pris. On démontre le **processus** sans conflit. Le CR est le même pour un vrai modèle.
-
-**Q : Les users peuvent déjà appeler le modèle ?**  
-R : Pas encore de façon gouvernée : il manque la Demo 2 (subscription + auth policy + clés).
-
-**Q : On peut le refaire sur un autre sandbox ?**  
-R : Oui — clone du repo GitHub + guide d’installation, scripts idempotents.
+Voir le [guide d’installation](GUIDE-INSTALLATION-DEMO1.md) et `scripts/50-verify.sh`.

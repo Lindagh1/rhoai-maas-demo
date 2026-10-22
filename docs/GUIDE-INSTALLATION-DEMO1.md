@@ -189,5 +189,5 @@ Bloqueurs typiques :
 1. Nouveau sandbox → `oc login`  
 2. `00-audit` → lire les alertes GPU  
 3. `10` → `40` → `50` × 2  
-4. Ouvrir le dashboard et **répéter une fois** le parcours du [guide démo live](GUIDE-DEMO-LIVE.md)  
+4. Ouvrir le dashboard et **répéter une fois** le parcours 100 % console du [guide démo live](GUIDE-DEMO-LIVE.md) (pas de terminal pendant le pitch)  
 5. Seulement ensuite : présentation client
