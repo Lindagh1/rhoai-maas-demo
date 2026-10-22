@@ -4,7 +4,7 @@
 # least once in this session (make bootstrap && make bootstrap && make
 # test-idempotency).
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 require_login
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Convert Markdown guide(s) to styled PDF via Chrome headless.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 CHROME="${CHROME:-google-chrome}"
 if ! command -v "$CHROME" &>/dev/null; then

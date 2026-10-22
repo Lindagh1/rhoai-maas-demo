@@ -2,7 +2,7 @@
 # Idempotent: install only missing supported Demo 1 prerequisites (RHCL, Kuadrant,
 # GatewayClass, UWM, Authorino TLS). Does NOT enable MaaS or deploy models.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 
@@ -74,7 +74,7 @@ ok "Kuadrant Ready"
 
 # --- Authorino TLS (§1.4) ---
 info "Configuring Authorino TLS"
-for i in $(seq 1 36); do
+for _ in $(seq 1 36); do
   oc get authorino authorino -n kuadrant-system &>/dev/null && break
   sleep 5
 done

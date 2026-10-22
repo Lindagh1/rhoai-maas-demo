@@ -7,7 +7,7 @@
 # idempotently restores it from manifests/maas/maas-auth-policy.yaml. A 403
 # here is the expected, successful outcome of this test -- not an error.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 source scripts/api_key.sh
 require_login

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # validate.sh - Run status + a lightweight health re-check (make validate).
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 require_login
 

@@ -2,7 +2,7 @@
 # Idempotent MaaS infrastructure: Gateway, Postgres, DSC aigateway, dashboard flags, DB secret.
 # Does NOT deploy models or Demo 2 governance CRs.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 

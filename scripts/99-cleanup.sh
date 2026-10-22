@@ -3,7 +3,7 @@
 # Does NOT uninstall RHCL/RHOAI, delete shared Gateways you did not create, or touch my-first-model.
 # Usage: CONFIRM=yes bash scripts/99-cleanup.sh
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 

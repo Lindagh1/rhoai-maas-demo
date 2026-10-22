@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # status.sh - Read-only readiness report for the whole MaaS stack + demo.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 require_login
 
