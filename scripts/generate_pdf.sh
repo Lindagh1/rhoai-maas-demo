@@ -60,18 +60,23 @@ with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="ut
     tmp = f.name
 chrome = subprocess.run(["which", "google-chrome"], capture_output=True, text=True)
 cmd = (chrome.stdout.strip() or "google-chrome")
+user_data = tempfile.mkdtemp(prefix="chrome-pdf-")
 subprocess.run([
     cmd, "--headless=new", "--disable-gpu", "--no-sandbox",
-    f"--print-to-pdf={dst}", f"file://{tmp}",
+    f"--user-data-dir={user_data}",
+    f"--print-to-pdf={pathlib.Path(dst).resolve()}",
+    f"file://{tmp}",
 ], check=True)
+import shutil
+shutil.rmtree(user_data, ignore_errors=True)
 pathlib.Path(tmp).unlink(missing_ok=True)
 print(f"Wrote {dst}")
 PY
 }
 
 if [[ $# -eq 0 ]]; then
-  md_to_pdf docs/DEMO_GUIDE.md docs/DEMO_GUIDE.pdf
-  md_to_pdf docs/PRESENTATION_CHEATSHEET.md docs/PRESENTATION_CHEATSHEET.pdf
+  md_to_pdf docs/GUIDE-INSTALLATION-DEMO1.md docs/GUIDE-INSTALLATION-DEMO1.pdf
+  md_to_pdf docs/GUIDE-DEMO-LIVE.md docs/GUIDE-DEMO-LIVE.pdf
 else
   for f in "$@"; do
     md_to_pdf "$f"
