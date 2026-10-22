@@ -1,6 +1,6 @@
 # Proof of Demo 1 publication (sanitized)
 
-**Cluster:** `api.ocp.sv8wx.sandbox2633.opentlc.com` (disposable sandbox)  
+**Cluster:** `api.ocp.<masked>.<masked>.opentlc.com` (disposable sandbox — hostname masked per policy)  
 **Captured:** 2026-10-22  
 
 ## Platform

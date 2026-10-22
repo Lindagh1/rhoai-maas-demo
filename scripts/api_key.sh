@@ -9,7 +9,7 @@
 # *inference* calls afterwards, and is the only thing persisted, in
 # .env.local (gitignored, never printed in full after creation).
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 
 ENV_FILE=".env.local"

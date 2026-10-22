@@ -1,7 +1,7 @@
 # Sandbox audit — Demo 1 (native LLMInferenceService → MaaS)
 
 **Date:** 2026-10-22  
-**Cluster (redacted):** `api.ocp.sv8wx.sandbox2633.opentlc.com`  
+**Cluster:** `api.ocp.<masked>.<masked>.opentlc.com` (hostname masked per policy — see `CURSOR_PROMPT_DEMO1.md`: "Mask cluster URLs... from exported reports")  
 **Identity:** `admin` (cluster-admin)  
 **Method:** read-only `oc get` / `oc explain` / `oc describe` / server dry-run. No secret values inspected.  
 **Raw capture:** `docs/sandbox-audit-raw.txt` (gitignored)
@@ -10,7 +10,7 @@
 
 | Area | Verdict |
 |---|---|
-| Intended disposable sandbox | **PASS** — logged into `sv8wx.sandbox2633` |
+| Intended disposable sandbox | **PASS** — logged into the intended disposable sandbox (hostname masked) |
 | OpenShift / RHOAI versions | **PASS** — OCP `4.20.42`, RHOAI `3.5.2` |
 | Native llm-d CRD (`LLMInferenceService`) | **PASS** — CRD present (`serving.kserve.io/v1alpha2`), 0 instances |
 | MaaS control plane | **FAIL** — `aigateway` unset; `ModelsAsAServiceReady=False` (Removed); no MaaS CRDs |
@@ -33,7 +33,7 @@
 | OpenShift ≥ 4.19.9 | `4.20.42` Available | PASS | `oc get clusterversion` | — |
 | RHOAI ≥ 3.5 | CSV `rhods-operator.3.5.2` Succeeded | PASS | `oc get csv -A \| grep rhods` | — |
 | Cluster-admin | `oc auth can-i create namespaces` → yes | PASS | `oc auth can-i …` | — |
-| Functional ingress + TLS | Domain `apps.ocp.sv8wx…`; `cert-manager-ingress-cert` Ready | PASS | `oc get ingresscontroller …`; `oc get certificate -n openshift-ingress` | Reuse existing ingress cert for MaaS Gateway |
+| Functional ingress + TLS | Domain `apps.ocp.<masked>…`; `cert-manager-ingress-cert` Ready | PASS | `oc get ingresscontroller …`; `oc get certificate -n openshift-ingress` | Reuse existing ingress cert for MaaS Gateway |
 | RHCL Operator 1.4.x in `openshift-operators` | Not installed; packagemanifest `rhcl-operator` channels `stable` (1.4.3), `stable-1.4` (1.4.4) | FAIL | `oc get sub -A`; `oc get packagemanifest rhcl-operator -n openshift-marketplace` | Install Subscription channel `stable-1.4` |
 | `Kuadrant` Ready in `kuadrant-system` | CRD/resource absent; ns empty | FAIL | `oc get kuadrant -A` | Create ns + Kuadrant CR after RHCL |
 | Authorino / Limitador for MaaS | Authorino Operator CSV present; no Authorino CR; Limitador absent | FAIL | `oc get authorino -A`; `oc get csv -A \| grep -i limitador` | Provided by Kuadrant reconcile |

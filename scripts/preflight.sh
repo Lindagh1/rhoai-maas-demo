@@ -38,7 +38,7 @@ print(n)
 " 2>/dev/null || echo 0)
 PENDING=$(oc get pods -A --no-headers 2>/dev/null | awk '$4=="Pending"' | wc -l | tr -d ' ')
 if [[ "$CRASHLOOPS" == "0" && "$OOMKILLS" == "0" ]]; then
-  pass "Cluster health" "no CrashLoopBackOff, no OOMKilled"
+  pass "Cluster health" "no CrashLoopBackOff, no OOMKilled (Pending=$PENDING)"
 else
   fail "Cluster health" "CrashLoops=$CRASHLOOPS OOMKilled=$OOMKILLS" "FAIL"
   BLOCKERS+=("Cluster unhealthy: CrashLoops=$CRASHLOOPS OOMKilled=$OOMKILLS")

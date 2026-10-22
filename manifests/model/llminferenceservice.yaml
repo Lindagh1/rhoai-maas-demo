@@ -43,20 +43,20 @@ spec:
         env:
           - name: POD_NAME
             valueFrom:
-              fieldRef: { apiVersion: v1, fieldPath: metadata.name }
+              fieldRef: {apiVersion: v1, fieldPath: metadata.name}
           - name: POD_NAMESPACE
             valueFrom:
-              fieldRef: { apiVersion: v1, fieldPath: metadata.namespace }
+              fieldRef: {apiVersion: v1, fieldPath: metadata.namespace}
         ports:
           - name: https
             containerPort: 8000
             protocol: TCP
         livenessProbe:
-          httpGet: { path: /health, port: https, scheme: HTTPS }
+          httpGet: {path: /health, port: https, scheme: HTTPS}
           initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
-          httpGet: { path: /ready, port: https, scheme: HTTPS }
+          httpGet: {path: /ready, port: https, scheme: HTTPS}
           initialDelaySeconds: 5
           periodSeconds: 5
         resources:

@@ -1,4 +1,9 @@
-# Troubleshooting
+# Troubleshooting — base RHOAI install / Knowledge Advisor demo
+
+> Scope: base RHOAI operator install + Knowledge Advisor RAG demo.
+> For Demo 1 (native llm-d + MaaS), see [`troubleshooting.md`](troubleshooting.md) instead.
+> Renamed from `TROUBLESHOOTING.md` to avoid a case-insensitive filename
+> collision with `troubleshooting.md` on macOS/Windows clones.
 
 Issues actually encountered while building/running this demo on this sandbox, and the exact fix applied. Every entry below was reproduced and fixed on the live cluster — none of this is speculative.
 

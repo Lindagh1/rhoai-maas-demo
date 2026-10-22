@@ -10,6 +10,21 @@ La Demo 2 (abonnements, clés API, quotas) est volontairement hors scope.
 
 ---
 
+## Structure du dépôt
+
+Ce dépôt a accumulé plusieurs démos RHOAI construites sur les mêmes sandboxes. **Si tu cherches la Demo 1 MaaS, reste dans `scripts/00-`→`99-`, `manifests/platform/`, `manifests/model/`, `manifests/maas/` et `docs/GUIDE-*`.**
+
+| Dossier / fichier | Démo | Statut |
+|---|---|---|
+| `scripts/00-audit.sh` … `99-cleanup.sh`, `manifests/platform/`, `manifests/model/`, `manifests/maas/`, `docs/GUIDE-*`, `docs/sandbox-audit.md` | **Demo 1 — MaaS natif llm-d** | Actif, maintenu |
+| `manifests/rhoai-operator/`, `scripts/install-rhoai-operator.sh`, `scripts/bootstrap.sh`, `scripts/preflight.sh`, `scripts/status.sh`, `docs/BASELINE.md`, `docs/PREFLIGHT.md` | Installation RHOAI de base (sandbox `t5lkh`) | Historique |
+| `openshift-ai-demo/`, `manifests/fraud-detection-tutorial/`, `manifests/workbench-vscode-demo/` | Knowledge Advisor (RAG) / fraud-detection / workbench VS Code | Historique, autres démos |
+| `docs/sandbox-t5lkh/` | Docs spécifiques à l'ancien sandbox `t5lkh` | Historique |
+
+Les manifests/scripts « historiques » restent dans le dépôt pour traçabilité, mais **ne font pas partie du parcours Demo 1** décrit ci-dessous.
+
+---
+
 ## Guides (commence ici)
 
 | Guide | Pour qui | Markdown | PDF |

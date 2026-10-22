@@ -4,7 +4,7 @@
 # but the dashboard did not create this CR.
 # Demo 2 objects (MaaSSubscription / MaaSAuthPolicy) are intentionally NOT applied.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 
@@ -35,7 +35,7 @@ oc apply --server-side=true -f manifests/maas/maas-model-ref.yaml
 
 info "Waiting for MaaSModelRef Ready (up to 3 min)..."
 PHASE=""
-for i in $(seq 1 18); do
+for _ in $(seq 1 18); do
   PHASE=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo -o jsonpath='{.status.phase}' 2>/dev/null || true)
   READY=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)

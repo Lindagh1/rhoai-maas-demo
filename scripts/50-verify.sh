@@ -2,7 +2,7 @@
 # Readiness / idempotence verification for Demo 1. Safe to re-run.
 # Distinguishes Demo 1 publication proof from Demo 2 governance Ready gate.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 

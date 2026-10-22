@@ -8,7 +8,7 @@
 # outcome, not an error. After the test, it waits for the 1-minute token
 # window to reset and confirms service returns to normal.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 source scripts/api_key.sh
 require_login

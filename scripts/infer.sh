@@ -6,7 +6,7 @@
 # Never calls the backend model directly. Always goes through the MaaS
 # Gateway host with an API key.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 source scripts/api_key.sh
 require_login

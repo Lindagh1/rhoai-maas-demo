@@ -8,7 +8,7 @@
 # script NEVER patches controller-managed Deployments directly, never loops
 # in the background, and aborts if the platform is unhealthy.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 
 require_login

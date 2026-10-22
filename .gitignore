@@ -14,4 +14,9 @@ docs/*credentials*
 docs/proof-*.yaml
 docs/proof-*.log
 docs/proof-*.txt
+# Ad hoc audit dump files (underscore-prefixed scratch files created during
+# live `oc get ... > docs/_foo.txt` exploration) — never meant to be committed.
+docs/_*.txt
+docs/_*.yaml
+docs/_*.json
 *.log

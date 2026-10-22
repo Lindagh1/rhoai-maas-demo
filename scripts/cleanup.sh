@@ -6,7 +6,7 @@
 # intact and ready for another demo, per explicit instruction. Safe to run
 # twice in a row.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 source scripts/lib.sh
 source scripts/api_key.sh 2>/dev/null || true
 require_login

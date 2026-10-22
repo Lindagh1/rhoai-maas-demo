@@ -2,7 +2,7 @@
 # Deploy native LLMInferenceService (llm-d) for Demo 1.
 # Uses CPU llm-d-inference-sim because the single L4 is allocated to the legacy ISVC.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # shellcheck source=scripts/lib.sh
 source scripts/lib.sh
 
@@ -32,7 +32,7 @@ oc apply --server-side=true -f manifests/model/llminferenceservice.yaml
 
 info "Waiting for LLMInferenceService Ready / pods Running (up to 5 min)..."
 READY=""
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   READY=$(oc get llminferenceservice demo-simulator -n rhoai-maas-demo \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
   RUNNING=$(oc get pods -n rhoai-maas-demo --no-headers 2>/dev/null | grep -c 'Running' || true)
