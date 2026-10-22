@@ -1,0 +1,20 @@
+# Minimal development/demo MLflow instance for the OpenShift AI 3.5 sandbox.
+# Cluster-scoped resource (mlflows.mlflow.opendatahub.io, Namespaced=false) - must be named "mlflow".
+# Source: Red Hat OpenShift AI 3.5 docs, "Install and configure MLflow" ->
+# "Minimal development or test deployment" example (SQLite backend store + PVC-backed
+# file artifact storage). Chosen deliberately over the PostgreSQL/S3 example to avoid
+# introducing new external dependencies in a temporary sandbox.
+apiVersion: mlflow.opendatahub.io/v1
+kind: MLflow
+metadata:
+  name: mlflow
+spec:
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi
+  backendStoreUri: "sqlite:////mlflow/mlflow.db"
+  artifactsDestination: "file:///mlflow/artifacts"
+  serveArtifacts: true

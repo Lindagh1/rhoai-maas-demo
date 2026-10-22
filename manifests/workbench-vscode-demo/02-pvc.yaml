@@ -1,0 +1,17 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: vscode-demo
+  namespace: vscode-demo
+  annotations:
+    openshift.io/description: "Storage for vscode-demo workbench"
+    openshift.io/display-name: vscode-demo
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem

@@ -1,0 +1,14 @@
+# ServiceAccount that the KServe S3 storage-initializer uses to pick up the
+# "My Storage" connection credentials, matching what the dashboard's
+# "Deploy model" wizard creates behind the scenes when you pick
+# "Existing connection". The my-storage Secret was additionally annotated
+# with serving.kserve.io/s3-endpoint, s3-usehttps, s3-verifyssl, s3-region
+# (see docs) so the storage-initializer init container knows how to reach
+# the local S4 endpoint.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fraud-detection-sa
+  namespace: fraud-detection
+secrets:
+  - name: my-storage

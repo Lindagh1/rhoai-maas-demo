@@ -10,7 +10,9 @@ metadata:
   labels:
     app.kubernetes.io/part-of: rhoai-maas-demo
 spec:
-  channel: stable
+  # Prefer stable-1.4 (CSV 1.4.4 on this catalog) over plain "stable" (1.4.3).
+  # Official RHOAI 3.5 MaaS docs require RHCL Operator 1.4.x.
+  channel: stable-1.4
   name: rhcl-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace

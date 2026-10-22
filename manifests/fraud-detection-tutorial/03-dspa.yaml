@@ -1,0 +1,35 @@
+# Equivalent of the dashboard's "Configure pipeline server" wizard
+# (Pipelines tab > Configure pipeline server > Autofill from connection >
+# "Pipeline Artifacts"). The dashboard itself just creates this
+# DataSciencePipelinesApplication CR (name: dspa) under the hood.
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: dspa
+  namespace: fraud-detection
+spec:
+  dspVersion: v2
+  apiServer:
+    deploy: true
+    enableSamplePipeline: false
+  database:
+    mariaDB:
+      deploy: true
+  objectStorage:
+    disableHealthCheck: false
+    externalStorage:
+      host: s4.fraud-detection.svc.cluster.local
+      port: "7480"
+      scheme: http
+      bucket: pipeline-artifacts
+      region: us-east-1
+      s3CredentialsSecret:
+        secretName: pipeline-artifacts
+        accessKey: AWS_ACCESS_KEY_ID
+        secretKey: AWS_SECRET_ACCESS_KEY
+  mlmd:
+    deploy: true
+  persistenceAgent:
+    deploy: true
+  scheduledWorkflow:
+    deploy: true

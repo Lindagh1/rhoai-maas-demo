@@ -1,0 +1,55 @@
+# Supporting resources for the OAuth-proxied workbench route (mirrors what the
+# OpenShift AI dashboard backend creates automatically when you click "Create workbench").
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: knowledge-advisor-workbench
+  namespace: knowledge-advisor
+  annotations:
+    serviceaccounts.openshift.io/oauth-redirectreference.knowledge-advisor-workbench: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"knowledge-advisor-workbench"}}'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: knowledge-advisor-workbench-oauth-config
+  namespace: knowledge-advisor
+type: Opaque
+stringData:
+  cookie_secret: "S2Fabk5hZFJhZzJEZW1vQ29va2ll"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-advisor-workbench-tls
+  namespace: knowledge-advisor
+  labels:
+    app: knowledge-advisor-workbench
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: knowledge-advisor-workbench-tls
+spec:
+  selector:
+    notebook-name: knowledge-advisor-workbench
+  ports:
+    - name: oauth-proxy
+      port: 8443
+      targetPort: 8443
+    - name: notebook-port
+      port: 8888
+      targetPort: 8888
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: knowledge-advisor-workbench
+  namespace: knowledge-advisor
+  labels:
+    app: knowledge-advisor-workbench
+spec:
+  to:
+    kind: Service
+    name: knowledge-advisor-workbench-tls
+  port:
+    targetPort: oauth-proxy
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect

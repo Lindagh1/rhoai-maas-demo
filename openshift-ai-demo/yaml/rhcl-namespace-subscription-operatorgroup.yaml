@@ -1,0 +1,28 @@
+# Red Hat Connectivity Link 1.4 install (CLI method), per official RHCL 1.4 docs
+# "Install Connectivity Link on OpenShift Container Platform from the CLI",
+# using the OpenShift Cluster Ingress Operator as the Gateway object controller
+# (no Istio/Service Mesh override needed on OCP 4.19+ native Gateway API).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuadrant-system
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: rhcl-operator
+  namespace: kuadrant-system
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: rhcl-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kuadrant
+  namespace: kuadrant-system
+spec:
+  upgradeStrategy: Default

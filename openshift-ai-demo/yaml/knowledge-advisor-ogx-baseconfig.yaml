@@ -1,0 +1,96 @@
+# Full override config.yaml for the knowledge-advisor OGXServer.
+#
+# WHY overrideConfig (not baseConfig + spec.providers):
+#  1) The OGX operator's OCI-label resolution (used to derive a base config
+#     from the distribution image when no baseConfig/overrideConfig is set)
+#     fails in this sandbox with an HTTP 401 against registry.redhat.io —
+#     a registry-auth gap specific to the operator's internal image-manifest
+#     client (the kubelet's own image pulls work fine with the same node
+#     pull secret).
+#  2) Even after bypassing that with a minimal `baseConfig`, the operator's
+#     declarative mapping from spec.providers.vectorIo.remote.pgvector does
+#     NOT populate the pgvector provider's required `persistence`
+#     (KVStoreReference) field, causing a startup crash
+#     ("AttributeError: 'NoneType' object has no attribute 'backend'").
+#     This is a genuine platform gap in this OGX build.
+# Given both gaps, a full manual overrideConfig (matching exactly what the
+# operator itself generates for the working inference providers, plus the
+# corrected pgvector block) is the reliable path for this sandbox.
+#
+# The Postgres password is NOT stored here in plaintext: it is injected as
+# the OGX_PGVECTOR_PASSWORD env var from the pgvector-db-credentials Secret
+# via spec.workload.overrides.env, and referenced here as
+# ${env.OGX_PGVECTOR_PASSWORD}.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-advisor-ogx-override-config
+  namespace: knowledge-advisor
+  labels:
+    ogx.io/watch: "true"
+data:
+  config.yaml: |
+    version: '2'
+    distro_name: rh
+    apis:
+      - inference
+      - vector_io
+    providers:
+      inference:
+        - provider_id: llama-32-3b-instruct
+          provider_type: remote::vllm
+          config:
+            base_url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+            refresh_models: false
+        - provider_id: all-minilm-l6-v2
+          provider_type: remote::vllm
+          config:
+            base_url: http://all-minilm-l6-v2-predictor.my-first-model.svc.cluster.local:8080/v1
+            refresh_models: false
+      vector_io:
+        - provider_id: pgvector-knowledge-advisor
+          provider_type: remote::pgvector
+          config:
+            host: pgvector-db.knowledge-advisor.svc.cluster.local
+            port: 5432
+            db: ragdb
+            user: ragadmin
+            password: ${env.OGX_PGVECTOR_PASSWORD}
+            distance_metric: COSINE
+            persistence:
+              backend: kv_default
+              namespace: vector_io::pgvector
+    registered_resources:
+      models:
+        - model_id: llama-32-3b-instruct
+          provider_id: llama-32-3b-instruct
+          model_type: llm
+          context_length: 8192
+        - model_id: all-minilm-l6-v2
+          provider_id: all-minilm-l6-v2
+          model_type: embedding
+          metadata:
+            embedding_dimension: 384
+    server:
+      port: 8321
+    storage:
+      backends:
+        kv_default:
+          type: kv_sqlite
+          db_path: ${env.SQLITE_STORE_DIR:=/.ogx}/kvstore.db
+        sql_default:
+          type: sql_sqlite
+          db_path: ${env.SQLITE_STORE_DIR:=/.ogx}/sqlstore.db
+      stores:
+        metadata:
+          backend: kv_default
+          namespace: registry
+        inference:
+          backend: sql_default
+          table_name: inference_store
+        conversations:
+          backend: sql_default
+          table_name: openai_conversations
+        prompts:
+          backend: kv_default
+          namespace: prompts

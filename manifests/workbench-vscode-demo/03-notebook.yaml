@@ -1,0 +1,80 @@
+# VS Code (code-server) demo workbench.
+#
+# Only the main workbench container is specified here -- the
+# notebooks.opendatahub.io/inject-oauth: "true" annotation tells the
+# odh-notebook-controller mutating webhook to automatically add the
+# oauth-proxy sidecar container/volumes/secrets, and the notebook-controller
+# + odh-notebook-controller reconcile the supporting ServiceAccount, Service,
+# Route, and NetworkPolicy -- none of that needs to be authored by hand.
+apiVersion: kubeflow.org/v1
+kind: Notebook
+metadata:
+  name: vscode-demo
+  namespace: vscode-demo
+  labels:
+    app: vscode-demo
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/odh-managed: "true"
+  annotations:
+    notebooks.opendatahub.io/inject-oauth: "true"
+    notebooks.opendatahub.io/last-image-selection: code-server-notebook:3.5
+    notebooks.opendatahub.io/last-size-selection: Small
+    notebooks.opendatahub.io/oauth-logout-url: "https://rhods-dashboard-redhat-ods-applications.apps.cluster-t5lkh.dyn.redhatworkshops.io/projects/vscode-demo?notebookLogout=vscode-demo"
+    opendatahub.io/accelerator-name: ""
+    opendatahub.io/image-display-name: "VS Code"
+    openshift.io/description: "Demo VS Code (code-server) workbench"
+    openshift.io/display-name: "vscode-demo"
+    opendatahub.io/username: "admin"
+spec:
+  template:
+    spec:
+      affinity: {}
+      enableServiceLinks: false
+      containers:
+        - name: vscode-demo
+          image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/code-server-notebook:3.5
+          imagePullPolicy: Always
+          workingDir: /opt/app-root/src
+          ports:
+            - containerPort: 8888
+              name: notebook-port
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 8Gi
+          readinessProbe:
+            httpGet:
+              path: /notebook/vscode-demo/vscode-demo/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /notebook/vscode-demo/vscode-demo/api
+              port: notebook-port
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - mountPath: /opt/app-root/src
+              name: vscode-demo
+            - mountPath: /dev/shm
+              name: shm
+      volumes:
+        - name: vscode-demo
+          persistentVolumeClaim:
+            claimName: vscode-demo
+        - name: shm
+          emptyDir:
+            medium: Memory

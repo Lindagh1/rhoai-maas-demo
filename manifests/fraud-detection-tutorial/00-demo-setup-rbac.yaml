@@ -1,0 +1,22 @@
+# Matches the tutorial's setup-s3-job.yaml wrapper: a namespace-scoped
+# ServiceAccount with "edit" so the create-s3-storage Job's pods (running as
+# this SA) can themselves oc apply/get within the fraud-detection namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-setup
+  namespace: fraud-detection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: demo-setup-edit
+  namespace: fraud-detection
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: demo-setup
+    namespace: fraud-detection

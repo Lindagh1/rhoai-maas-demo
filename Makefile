@@ -1,4 +1,13 @@
-.PHONY: preflight bootstrap status infer demo-auth demo-rate-limit validate test-idempotency cleanup pdf
+.PHONY: install-rhoai-operator install-vscode-workbench-demo install-fraud-detection-tutorial preflight bootstrap status infer demo-auth demo-rate-limit validate test-idempotency cleanup pdf
+
+install-rhoai-operator:
+	@./scripts/install-rhoai-operator.sh
+
+install-vscode-workbench-demo:
+	@./scripts/install-vscode-workbench-demo.sh
+
+install-fraud-detection-tutorial:
+	@./scripts/install-fraud-detection-tutorial.sh
 
 preflight:
 	@./scripts/preflight.sh

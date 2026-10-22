@@ -1,0 +1,59 @@
+apiVersion: datasciencecluster.opendatahub.io/v2
+kind: DataScienceCluster
+metadata:
+  name: default-dsc
+spec:
+  components:
+    dashboard:
+      managementState: Managed
+    workbenches:
+      managementState: Managed
+    kserve:
+      managementState: Managed
+      serving:
+        managementState: Managed
+        name: knative-serving
+    aipipelines:
+      managementState: Managed
+      argoWorkflowsControllers:
+        managementState: Managed
+    modelregistry:
+      managementState: Managed
+      registriesNamespace: rhoai-model-registries
+    # kueue.managementState only accepts Unmanaged/Removed on this operator
+    # version ("Managed" is rejected by the admission webhook -- kept in the
+    # enum only for OLM upgrade backwards-compatibility). Unmanaged lets the
+    # DSC integrate with the separately-installed kueue-operator (RHBOK)
+    # instead of trying to manage its lifecycle itself.
+    kueue:
+      managementState: Unmanaged
+    trainingoperator:
+      managementState: Managed
+    trustyai:
+      managementState: Managed
+    ray:
+      managementState: Managed
+    feastoperator:
+      managementState: Managed
+    mlflowoperator:
+      managementState: Managed
+    sparkoperator:
+      managementState: Managed
+    # llamastackoperator is DEPRECATED and superseded by ogx -- the operator
+    # actively rejects ogx=Managed while llamastackoperator=Managed
+    # ("set it to Removed before enabling OGX"). Removed here since ogx is
+    # enabled below.
+    llamastackoperator:
+      managementState: Removed
+    mcplifecycleoperator:
+      managementState: Managed
+    trainer:
+      managementState: Managed
+    ogx:
+      managementState: Managed
+    aigateway:
+      managementState: Managed
+      modelsAsAService:
+        managementState: Managed
+      batchGateway:
+        managementState: Managed

@@ -1,0 +1,344 @@
+# PIPELINE DEFINITION
+# Name: knowledge-advisor-ingestion
+# Description: Load company documents from MinIO, chunk them, embed with all-minilm-l6-v2, and store vectors in pgvector.
+# Inputs:
+#    bucket: str [Default: 'documents']
+#    db_uri: str [Default: 'postgresql://ragadmin:PLACEHOLDER@pgvector-db.knowledge-advisor.svc.cluster.local:5432/ragdb']
+#    embed_model: str [Default: 'all-minilm-l6-v2']
+#    embed_url: str [Default: 'http://all-minilm-l6-v2-predictor.my-first-model.svc.cluster.local:8080/v1/embeddings']
+#    endpoint: str [Default: 'http://minio.knowledge-advisor.svc.cluster.local:9000']
+#    prefix: str [Default: 'raw/']
+components:
+  comp-chunk-documents:
+    executorLabel: exec-chunk-documents
+    inputDefinitions:
+      parameters:
+        docs:
+          parameterType: LIST
+        max_chars:
+          defaultValue: 600.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: LIST
+  comp-embed-chunks:
+    executorLabel: exec-embed-chunks
+    inputDefinitions:
+      parameters:
+        chunks:
+          parameterType: LIST
+        embed_model:
+          parameterType: STRING
+        embed_url:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: LIST
+  comp-load-documents:
+    executorLabel: exec-load-documents
+    inputDefinitions:
+      parameters:
+        bucket:
+          parameterType: STRING
+        endpoint:
+          parameterType: STRING
+        prefix:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: LIST
+  comp-store-vectors:
+    executorLabel: exec-store-vectors
+    inputDefinitions:
+      parameters:
+        db_uri:
+          parameterType: STRING
+        embed_dim:
+          defaultValue: 384.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        embedded_chunks:
+          parameterType: LIST
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-chunk-documents:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - chunk_documents
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef chunk_documents(docs: list, max_chars: int = 600) -> list:\n\
+          \    import re\n\n    def chunk_markdown(text, source, max_chars):\n   \
+          \     title_match = re.match(r\"#\\s+(.+)\", text.strip())\n        title\
+          \ = title_match.group(1).strip() if title_match else source\n        sections\
+          \ = re.split(r\"\\n(?=##\\s)\", text)\n        chunks = []\n        for\
+          \ section in sections:\n            section = section.strip()\n        \
+          \    if not section:\n                continue\n            header_match\
+          \ = re.match(r\"##\\s+(.+)\", section)\n            heading = header_match.group(1).strip()\
+          \ if header_match else None\n            if len(section) <= max_chars:\n\
+          \                content = f\"{title} \u2014 {heading}\\n{section}\" if\
+          \ heading else section\n                chunks.append(content)\n       \
+          \         continue\n            paragraphs = [p.strip() for p in re.split(r\"\
+          \\n\\s*\\n\", section) if p.strip()]\n            current = \"\"\n     \
+          \       for p in paragraphs:\n                if len(current) + len(p) +\
+          \ 1 > max_chars and current:\n                    prefix = f\"{title} \u2014\
+          \ {heading}\\n\" if heading else \"\"\n                    chunks.append(prefix\
+          \ + current.strip())\n                    current = p\n                else:\n\
+          \                    current = (current + \"\\n\" + p).strip()\n       \
+          \     if current:\n                prefix = f\"{title} \u2014 {heading}\\\
+          n\" if heading else \"\"\n                chunks.append(prefix + current.strip())\n\
+          \        return chunks\n\n    all_chunks = []\n    for doc in docs:\n  \
+          \      for i, c in enumerate(chunk_markdown(doc[\"text\"], doc[\"source\"\
+          ], max_chars)):\n            all_chunks.append({\"source\": doc[\"source\"\
+          ], \"chunk_index\": i, \"content\": c})\n    print(f\"Produced {len(all_chunks)}\
+          \ chunks from {len(docs)} documents\")\n    return all_chunks\n\n"
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.5
+    exec-embed-chunks:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - embed_chunks
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef embed_chunks(chunks: list, embed_url: str, embed_model: str)\
+          \ -> list:\n    import requests\n\n    batch = 16\n    out = []\n    for\
+          \ i in range(0, len(chunks), batch):\n        group = chunks[i : i + batch]\n\
+          \        resp = requests.post(\n            embed_url,\n            json={\"\
+          model\": embed_model, \"input\": [c[\"content\"] for c in group]},\n   \
+          \         timeout=30,\n        )\n        resp.raise_for_status()\n    \
+          \    data = sorted(resp.json()[\"data\"], key=lambda d: d[\"index\"])\n\
+          \        for c, d in zip(group, data):\n            out.append({**c, \"\
+          embedding\": d[\"embedding\"]})\n    print(f\"Embedded {len(out)} chunks\"\
+          )\n    return out\n\n"
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.5
+    exec-load-documents:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_documents
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef load_documents(bucket: str, endpoint: str, prefix: str) -> list:\n\
+          \    import boto3\n    import os\n\n    s3 = boto3.client(\n        \"s3\"\
+          ,\n        endpoint_url=endpoint,\n        aws_access_key_id=os.environ[\"\
+          AWS_ACCESS_KEY_ID\"],\n        aws_secret_access_key=os.environ[\"AWS_SECRET_ACCESS_KEY\"\
+          ],\n    )\n    resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)\n\
+          \    docs = []\n    for obj in resp.get(\"Contents\", []):\n        body\
+          \ = s3.get_object(Bucket=bucket, Key=obj[\"Key\"])[\"Body\"].read().decode(\"\
+          utf-8\")\n        docs.append({\"source\": obj[\"Key\"].split(\"/\")[-1],\
+          \ \"text\": body})\n    print(f\"Loaded {len(docs)} documents from s3://{bucket}/{prefix}\"\
+          )\n    return docs\n\n"
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.5
+    exec-store-vectors:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - store_vectors
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef store_vectors(embedded_chunks: list, db_uri: str, embed_dim:\
+          \ int = 384) -> str:\n    import psycopg\n\n    conn = psycopg.connect(db_uri)\n\
+          \    conn.execute(\"CREATE EXTENSION IF NOT EXISTS vector;\")\n    conn.execute(\n\
+          \        f\"\"\"\n        CREATE TABLE IF NOT EXISTS document_chunks (\n\
+          \            id SERIAL PRIMARY KEY,\n            source TEXT NOT NULL,\n\
+          \            chunk_index INT NOT NULL,\n            content TEXT NOT NULL,\n\
+          \            embedding VECTOR({embed_dim})\n        );\n        \"\"\"\n\
+          \    )\n    conn.execute(\"TRUNCATE document_chunks;\")\n    with conn.cursor()\
+          \ as cur:\n        for c in embedded_chunks:\n            cur.execute(\n\
+          \                \"INSERT INTO document_chunks (source, chunk_index, content,\
+          \ embedding) \"\n                \"VALUES (%s, %s, %s, %s)\",\n        \
+          \        (c[\"source\"], c[\"chunk_index\"], c[\"content\"], str(c[\"embedding\"\
+          ])),\n            )\n    conn.commit()\n    conn.execute(\n        \"CREATE\
+          \ INDEX IF NOT EXISTS document_chunks_embedding_idx \"\n        \"ON document_chunks\
+          \ USING hnsw (embedding vector_cosine_ops);\"\n    )\n    conn.commit()\n\
+          \    with conn.cursor() as cur:\n        cur.execute(\"SELECT count(*) FROM\
+          \ document_chunks;\")\n        total = cur.fetchone()[0]\n    conn.close()\n\
+          \    result = f\"Stored {total} chunks in pgvector\"\n    print(result)\n\
+          \    return result\n\n"
+        image: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-generic-data-science-notebook:3.5
+pipelineInfo:
+  description: Load company documents from MinIO, chunk them, embed with all-minilm-l6-v2,
+    and store vectors in pgvector.
+  name: knowledge-advisor-ingestion
+root:
+  dag:
+    tasks:
+      chunk-documents:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-chunk-documents
+        dependentTasks:
+        - load-documents
+        inputs:
+          parameters:
+            docs:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: load-documents
+        taskInfo:
+          name: chunk-documents
+      embed-chunks:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-embed-chunks
+        dependentTasks:
+        - chunk-documents
+        inputs:
+          parameters:
+            chunks:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: chunk-documents
+            embed_model:
+              componentInputParameter: embed_model
+            embed_url:
+              componentInputParameter: embed_url
+        taskInfo:
+          name: embed-chunks
+      load-documents:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-documents
+        inputs:
+          parameters:
+            bucket:
+              componentInputParameter: bucket
+            endpoint:
+              componentInputParameter: endpoint
+            prefix:
+              componentInputParameter: prefix
+        taskInfo:
+          name: load-documents
+      store-vectors:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-store-vectors
+        dependentTasks:
+        - embed-chunks
+        inputs:
+          parameters:
+            db_uri:
+              componentInputParameter: db_uri
+            embedded_chunks:
+              taskOutputParameter:
+                outputParameterKey: Output
+                producerTask: embed-chunks
+        taskInfo:
+          name: store-vectors
+  inputDefinitions:
+    parameters:
+      bucket:
+        defaultValue: documents
+        isOptional: true
+        parameterType: STRING
+      db_uri:
+        defaultValue: postgresql://ragadmin:PLACEHOLDER@pgvector-db.knowledge-advisor.svc.cluster.local:5432/ragdb
+        isOptional: true
+        parameterType: STRING
+      embed_model:
+        defaultValue: all-minilm-l6-v2
+        isOptional: true
+        parameterType: STRING
+      embed_url:
+        defaultValue: http://all-minilm-l6-v2-predictor.my-first-model.svc.cluster.local:8080/v1/embeddings
+        isOptional: true
+        parameterType: STRING
+      endpoint:
+        defaultValue: http://minio.knowledge-advisor.svc.cluster.local:9000
+        isOptional: true
+        parameterType: STRING
+      prefix:
+        defaultValue: raw/
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.17.0

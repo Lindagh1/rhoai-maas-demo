@@ -1,0 +1,95 @@
+# Lightweight, single-replica PostgreSQL instance backing maas-api's persistence layer
+# (API key metadata: hashed tokens, subscription bindings, expiration, revocation state).
+# Hand-authored instead of running the upstream setup-database.sh script, for transparency/audit
+# in this sandbox. Reuses registry.redhat.io/rhel9/postgresql-16, already pulled on this cluster
+# (used by other RHOAI components), to avoid an extra image pull.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maas-postgres-creds
+  namespace: redhat-ods-applications
+type: Opaque
+stringData:
+  POSTGRESQL_USER: maas
+  POSTGRESQL_PASSWORD: maas-sandbox-demo-pw
+  POSTGRESQL_DATABASE: maas
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maas-postgres-pvc
+  namespace: redhat-ods-applications
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maas-postgres
+  namespace: redhat-ods-applications
+  labels:
+    app: maas-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maas-postgres
+  template:
+    metadata:
+      labels:
+        app: maas-postgres
+    spec:
+      containers:
+        - name: postgresql
+          image: registry.redhat.io/rhel9/postgresql-16:1-1754433677
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: maas-postgres-creds
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "maas", "-d", "maas"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: maas-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maas-postgres
+  namespace: redhat-ods-applications
+spec:
+  selector:
+    app: maas-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# maas-api reads this Secret for its DB connection string (must exist before/at the time
+# aigateway.modelsAsAService is set to Managed, per upstream MaaS docs).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: maas-db-config
+  namespace: redhat-ods-applications
+type: Opaque
+stringData:
+  DB_CONNECTION_URL: "postgresql://maas:maas-sandbox-demo-pw@maas-postgres.redhat-ods-applications.svc.cluster.local:5432/maas?sslmode=disable"

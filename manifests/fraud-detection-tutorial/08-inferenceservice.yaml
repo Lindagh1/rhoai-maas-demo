@@ -1,0 +1,34 @@
+# Model deployment "fraud", matching Chapter 4.2 "Deploy the model":
+#   Model location: Existing connection > My Storage
+#   Path: models/fraud
+#   Model type: Predictive model, framework onnx-1
+#   Serving runtime: OpenVINO Model Server (kserve-ovms, RawDeployment mode)
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: fraud
+  namespace: fraud-detection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    openshift.io/display-name: fraud
+    serving.kserve.io/deploymentMode: RawDeployment
+    security.opendatahub.io/enable-auth: "false"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    serviceAccountName: fraud-detection-sa
+    model:
+      modelFormat:
+        name: onnx
+        version: "1"
+      runtime: kserve-ovms
+      storageUri: s3://my-storage/models/fraud
+      resources:
+        requests:
+          cpu: "1"
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
