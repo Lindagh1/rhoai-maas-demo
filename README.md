@@ -26,7 +26,7 @@ La Demo 2 (abonnements, clés API, quotas) est volontairement hors scope.
 ```bash
 git clone https://github.com/Lindagh1/rhoai-maas-demo.git
 cd rhoai-maas-demo
-git checkout demo1-native-maas
+git checkout main
 
 oc login --server="$SANDBOX_API" --token="$SANDBOX_TOKEN" --insecure-skip-tls-verify=true
 
