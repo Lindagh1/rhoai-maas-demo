@@ -31,7 +31,7 @@ Tu n’as **pas** besoin de coller ton token dans Git, ni dans un fichier du dé
 ```bash
 git clone https://github.com/Lindagh1/rhoai-maas-demo.git
 cd rhoai-maas-demo
-git checkout demo1-native-maas   # branche Demo 1 (à ajuster si renommée)
+git checkout main
 ```
 
 Si tu es déjà dans le dépôt :
