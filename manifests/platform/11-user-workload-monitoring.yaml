@@ -1,0 +1,14 @@
+# Enable OpenShift User Workload Monitoring (required by RHOAI 3.5 MaaS docs;
+# without it MaaS reports Degraded for token/request metrics).
+# Additive: only sets enableUserWorkload; does not rewrite other monitoring config
+# if an admin later expands this ConfigMap — scripts merge carefully.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+data:
+  config.yaml: |
+    enableUserWorkload: true

@@ -1,21 +1,17 @@
-# CPU-only, GPU-free OpenAI-compatible model simulator recommended by the
-# official RHOAI MaaS companion guide for MaaS verification
-# (ghcr.io/llm-d/llm-d-inference-sim -- https://github.com/llm-d/llm-d-inference-sim).
-# Deterministic, fast, no real weights are used for inference (the simulator
-# returns synthetic completions), so this demo never runs a real LLM/GPU/vLLM
-# workload.
+# CPU-only llm-d inference simulator for Demo 1 native path.
+# Proves LLMInferenceService (llm-d) → MaaS without consuming the single L4 GPU
+# currently held by my-first-model/llama-32-3b-instruct.
 #
-# Pointing router.gateway.refs at the shared maas-default-gateway is what
-# "publishes into MaaS" means: the odh-model-controller / KServe LLMISVC
-# controller watches LLMInferenceServices with a gateway ref and automatically
-# creates the HTTPRoute attaching this model to the gateway.
-apiVersion: serving.kserve.io/v1alpha1
+# Validated against this cluster: serving.kserve.io/v1alpha2 (server dry-run).
+# Image: ghcr.io/llm-d/llm-d-inference-sim (synthetic completions; no real weights).
+apiVersion: serving.kserve.io/v1alpha2
 kind: LLMInferenceService
 metadata:
   name: demo-simulator
   namespace: rhoai-maas-demo
   labels:
     app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/component: demo1-native-model
 spec:
   model:
     uri: hf://sshleifer/tiny-gpt2
@@ -57,8 +53,12 @@ spec:
             protocol: TCP
         livenessProbe:
           httpGet: { path: /health, port: https, scheme: HTTPS }
+          initialDelaySeconds: 10
+          periodSeconds: 10
         readinessProbe:
           httpGet: { path: /ready, port: https, scheme: HTTPS }
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           requests:
             cpu: 100m

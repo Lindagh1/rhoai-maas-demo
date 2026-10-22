@@ -1,3 +1,17 @@
 .env.local
 *.bak
 /tmp/
+
+# Demo1 starter ignores
+.env
+.env.*
+*.kubeconfig
+kubeconfig*
+secrets/
+**/*secret*values*.yaml
+docs/sandbox-audit-raw.txt
+docs/*credentials*
+docs/proof-*.yaml
+docs/proof-*.log
+docs/proof-*.txt
+*.log
