@@ -2,6 +2,10 @@
 # Installs the Kuadrant operator (which in turn manages Authorino + Limitador)
 # into the shared openshift-operators namespace, matching the official RHOAI
 # 3.5 MaaS prerequisite: "Red Hat Connectivity Link Operator version 1.4.x".
+#
+# NOTE: this is the Demo 1 copy, consumed by scripts/10-prerequisites.sh.
+# A second copy exists at manifests/rhoai-operator/05-rhcl-operator-subscription.yaml
+# for the unrelated install-rhoai-operator.sh flow — keep both in sync.
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:

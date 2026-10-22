@@ -98,4 +98,4 @@ No extra GPU. Pre-existing models in other namespaces are untouched.
 make cleanup
 ```
 
-See [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues.
+See [docs/TROUBLESHOOTING-base-install.md](TROUBLESHOOTING-base-install.md) for common issues.

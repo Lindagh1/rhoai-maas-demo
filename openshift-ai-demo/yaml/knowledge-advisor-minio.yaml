@@ -1,6 +1,12 @@
 # MinIO — S3-compatible object storage for knowledge-advisor
 # Backs: (1) the "company-documents" Connection (bucket: documents)
 #        (2) the Data Science Pipelines server's required object storage (bucket: pipelines)
+#
+# SECURITY: this is a reference/template manifest kept for historical documentation.
+# Do NOT `oc apply` this Secret as-is. Generate the password at apply time instead, e.g.:
+#   oc create secret generic minio-credentials -n knowledge-advisor \
+#     --from-literal=MINIO_ROOT_USER=minioadmin \
+#     --from-literal=MINIO_ROOT_PASSWORD="$(python3 -c 'import secrets;print(secrets.token_hex(20))')"
 apiVersion: v1
 kind: Secret
 metadata:
@@ -9,7 +15,7 @@ metadata:
 type: Opaque
 stringData:
   MINIO_ROOT_USER: minioadmin
-  MINIO_ROOT_PASSWORD: minioadmin-ka-demo-2026
+  MINIO_ROOT_PASSWORD: CHANGE_ME_GENERATE_RANDOM_PASSWORD
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

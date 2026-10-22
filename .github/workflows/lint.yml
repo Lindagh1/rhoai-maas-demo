@@ -1,0 +1,54 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck (scripts/*.sh)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+          check_together: 'yes'
+        env:
+          # SC1091: scripts source ./scripts/lib.sh with a relative path that
+          # the per-file scan can't resolve; this is intentional and safe.
+          SHELLCHECK_OPTS: -e SC1091
+
+  bash-syntax:
+    name: Bash syntax check (bash -n)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check every script
+        run: |
+          set -euo pipefail
+          status=0
+          for f in scripts/*.sh; do
+            echo "== $f =="
+            bash -n "$f" || status=1
+          done
+          exit "$status"
+
+  yaml-lint:
+    name: yamllint (Demo 1 manifests only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install --quiet yamllint
+      - name: Run yamllint
+        # Scoped to the actively-maintained Demo 1 manifests (native llm-d +
+        # MaaS). Other folders under manifests/ belong to historical/separate
+        # demos (fraud-detection-tutorial, rhoai-operator, workbench-vscode-demo)
+        # and are intentionally out of scope for this check.
+        run: |
+          yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: disable}}" \
+            manifests/platform manifests/model manifests/maas

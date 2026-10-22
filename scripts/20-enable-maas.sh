@@ -122,21 +122,35 @@ ok "Infra namespace: $INFRA_NS"
 oc label namespace "$INFRA_NS" maas.opendatahub.io/gateway-access=true --overwrite >/dev/null
 
 # --- maas-db-config in infra ns ---
-info "Writing maas-db-config into $INFRA_NS (connection string never printed)"
+# Idempotence: only (re)write the secret and restart maas-api if the connection
+# string actually changed. A blind restart on every re-run would violate the
+# "safe to re-run" requirement (scripts/50-verify.sh run twice must be a no-op).
+info "Checking maas-db-config in $INFRA_NS (connection string never printed)"
 PG_USER=$(oc get secret postgres-creds -n redhat-ods-applications -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
 PG_PASS=$(oc get secret postgres-creds -n redhat-ods-applications -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
 PG_DB=$(oc get secret postgres-creds -n redhat-ods-applications -o jsonpath='{.data.POSTGRES_DB}' | base64 -d)
 DESIRED_URL="postgresql://${PG_USER}:${PG_PASS}@postgres.redhat-ods-applications.svc.cluster.local:5432/${PG_DB}?sslmode=disable"
-oc create secret generic maas-db-config -n "$INFRA_NS" \
-  --from-literal=DB_CONNECTION_URL="$DESIRED_URL" \
-  --dry-run=client -o yaml | oc apply -f - >/dev/null
-unset PG_USER PG_PASS PG_DB DESIRED_URL
-ok "maas-db-config applied"
+unset PG_USER PG_PASS PG_DB
 
-if oc get deployment maas-api -n "$INFRA_NS" &>/dev/null; then
-  oc rollout restart deployment/maas-api -n "$INFRA_NS" >/dev/null || true
-  oc rollout status deployment/maas-api -n "$INFRA_NS" --timeout=300s || warn "maas-api rollout not ready yet"
+CURRENT_URL=""
+if oc get secret maas-db-config -n "$INFRA_NS" &>/dev/null; then
+  CURRENT_URL=$(oc get secret maas-db-config -n "$INFRA_NS" -o jsonpath='{.data.DB_CONNECTION_URL}' 2>/dev/null | base64 -d 2>/dev/null || true)
 fi
+
+if [[ "$CURRENT_URL" == "$DESIRED_URL" ]]; then
+  ok "maas-db-config already up to date — skipping write and maas-api restart"
+else
+  oc create secret generic maas-db-config -n "$INFRA_NS" \
+    --from-literal=DB_CONNECTION_URL="$DESIRED_URL" \
+    --dry-run=client -o yaml | oc apply -f - >/dev/null
+  ok "maas-db-config (re)written"
+  if oc get deployment maas-api -n "$INFRA_NS" &>/dev/null; then
+    info "Connection string changed — restarting maas-api to pick it up"
+    oc rollout restart deployment/maas-api -n "$INFRA_NS" >/dev/null || true
+    oc rollout status deployment/maas-api -n "$INFRA_NS" --timeout=300s || warn "maas-api rollout not ready yet"
+  fi
+fi
+unset DESIRED_URL CURRENT_URL
 
 info "Waiting for ModelsAsAServiceReady=True (up to 5 min)..."
 for i in $(seq 1 30); do
