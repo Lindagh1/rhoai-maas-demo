@@ -12,12 +12,13 @@ La Demo 2 (abonnements, clés API, quotas) est volontairement hors scope.
 
 ## Guides (commence ici)
 
-| Guide | Pour qui | Lien |
-|---|---|---|
-| **Installation** | Toi, avant la démo | [`docs/GUIDE-INSTALLATION-DEMO1.md`](docs/GUIDE-INSTALLATION-DEMO1.md) |
-| **Démo live (clics)** | Présentation client, très pédagogique | [`docs/GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) |
-| Troubleshooting | Quand ça coince | [`docs/troubleshooting.md`](docs/troubleshooting.md) |
-| Audit / plan technique | Detail ingénierie | [`docs/sandbox-audit.md`](docs/sandbox-audit.md), [`docs/implementation-plan.md`](docs/implementation-plan.md) |
+| Guide | Pour qui | Markdown | PDF |
+|---|---|---|---|
+| **Installation** | Toi, avant la démo | [`GUIDE-INSTALLATION-DEMO1.md`](docs/GUIDE-INSTALLATION-DEMO1.md) | [`PDF`](docs/GUIDE-INSTALLATION-DEMO1.pdf) |
+| **Démo live (clics)** | Présentation client | [`GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) | [`PDF`](docs/GUIDE-DEMO-LIVE.pdf) |
+| Troubleshooting | Quand ça coince | [`troubleshooting.md`](docs/troubleshooting.md) | — |
+
+Régénérer les PDF localement : `bash scripts/generate_pdf.sh`
 
 ---
 
