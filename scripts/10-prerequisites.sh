@@ -28,7 +28,7 @@ else
   oc apply -f manifests/platform/11-user-workload-monitoring.yaml
 fi
 info "Waiting for UWM pods (up to 3 min)..."
-for i in $(seq 1 18); do
+for _ in $(seq 1 18); do
   READY=$(oc get pods -n openshift-user-workload-monitoring --no-headers 2>/dev/null | grep -c Running || true)
   [[ "${READY:-0}" -ge 1 ]] && break
   sleep 10

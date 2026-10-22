@@ -112,7 +112,7 @@ ok "MaaS CRDs present ($CRD_COUNT)"
 
 info "Waiting for infrastructure namespace..."
 INFRA_NS=""
-for i in $(seq 1 36); do
+for _ in $(seq 1 36); do
   INFRA_NS=$(infra_namespace)
   oc get namespace "$INFRA_NS" &>/dev/null && break
   sleep 10
@@ -153,7 +153,7 @@ fi
 unset DESIRED_URL CURRENT_URL
 
 info "Waiting for ModelsAsAServiceReady=True (up to 5 min)..."
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   ST=$(oc get dsc default-dsc -o jsonpath='{.status.conditions[?(@.type=="ModelsAsAServiceReady")].status}' 2>/dev/null || true)
   [[ "$ST" == "True" ]] && break
   sleep 10
