@@ -1,12 +1,14 @@
-# RHOAI 3.5 MaaS — Demo 1 (natif llm-d)
+# RHOAI 3.5 MaaS — Demo 1 (natif llm-d) + Demo 2 (parcours utilisateur)
 
-Démo **reproductible** pour sandboxes Red Hat OpenShift AI 3.5 :
+Démos **reproductibles** pour sandboxes Red Hat OpenShift AI 3.5 :
 
 ```text
-LLMInferenceService (llm-d) → MaaSModelRef → modèle publié dans MaaS
+Demo 1 : LLMInferenceService (llm-d) → MaaSModelRef → modèle publié dans MaaS
+Demo 2 : abonnements MaaS → clé API utilisateur → inférence gouvernée (quotas, 403/429, révocation)
 ```
 
-La Demo 2 (abonnements, clés API, quotas) est volontairement hors scope.
+Demo 2 réutilise le modèle et l'infrastructure de la Demo 1 sans les modifier — voir
+[`DEMO2-RESULTS.md`](DEMO2-RESULTS.md) pour l'état complet (PASS/BLOCKED/NOT TESTED par scénario).
 
 ---
 
@@ -17,6 +19,7 @@ Ce dépôt a accumulé plusieurs démos RHOAI construites sur les mêmes sandbox
 | Dossier / fichier | Démo | Statut |
 |---|---|---|
 | `scripts/00-audit.sh` … `99-cleanup.sh`, `manifests/platform/`, `manifests/model/`, `manifests/maas/`, `docs/GUIDE-*`, `docs/sandbox-audit.md` | **Demo 1 — MaaS natif llm-d** | Actif, maintenu |
+| `scripts/demo2/`, `manifests/demo2/`, `docs/demo2/`, `docs/GUIDE-DEMO-LIVE-DEMO2.md`, `DEMO2-RESULTS.md` | **Demo 2 — parcours utilisateur MaaS** (abonnements, clés API, quotas, révocation) | Actif, maintenu |
 | `manifests/rhoai-operator/`, `scripts/install-rhoai-operator.sh`, `scripts/bootstrap.sh`, `scripts/preflight.sh`, `scripts/status.sh`, `docs/BASELINE.md`, `docs/PREFLIGHT.md` | Installation RHOAI de base (sandbox `t5lkh`) | Historique |
 | `openshift-ai-demo/`, `manifests/fraud-detection-tutorial/`, `manifests/workbench-vscode-demo/` | Knowledge Advisor (RAG) / fraud-detection / workbench VS Code | Historique, autres démos |
 | `docs/sandbox-t5lkh/` | Docs spécifiques à l'ancien sandbox `t5lkh` | Historique |
@@ -29,9 +32,12 @@ Les manifests/scripts « historiques » restent dans le dépôt pour traçabilit
 
 | Guide | Pour qui | Markdown | PDF |
 |---|---|---|---|
-| **Installation** | Toi, avant la démo | [`GUIDE-INSTALLATION-DEMO1.md`](docs/GUIDE-INSTALLATION-DEMO1.md) | [`PDF`](docs/GUIDE-INSTALLATION-DEMO1.pdf) |
-| **Démo live (clics)** | Présentation client | [`GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) | [`PDF`](docs/GUIDE-DEMO-LIVE.pdf) |
-| Troubleshooting | Quand ça coince | [`troubleshooting.md`](docs/troubleshooting.md) | — |
+| **Installation (Demo 1)** | Toi, avant la démo | [`GUIDE-INSTALLATION-DEMO1.md`](docs/GUIDE-INSTALLATION-DEMO1.md) | [`PDF`](docs/GUIDE-INSTALLATION-DEMO1.pdf) |
+| **Démo live Demo 1 (clics console)** | Présentation client | [`GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) | [`PDF`](docs/GUIDE-DEMO-LIVE.pdf) |
+| **Démo live Demo 2 (dashboard + terminal)** | Présentation client | [`GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md) | [`PDF`](docs/GUIDE-DEMO-LIVE-DEMO2.pdf) |
+| Setup + reproduction (Demo 2) | Toi, avant la démo | [`docs/demo2/06-new-sandbox-reproduction.md`](docs/demo2/06-new-sandbox-reproduction.md) | — |
+| Résultats détaillés (Demo 2) | Toi / client technique | [`DEMO2-RESULTS.md`](DEMO2-RESULTS.md) | — |
+| Troubleshooting | Quand ça coince | [`troubleshooting.md`](docs/troubleshooting.md), [`docs/demo2/05-troubleshooting.md`](docs/demo2/05-troubleshooting.md) | — |
 
 Régénérer les PDF localement : `bash scripts/generate_pdf.sh`
 
