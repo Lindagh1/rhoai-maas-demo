@@ -19,8 +19,11 @@ DEMO2_MODEL_NAME="${DEMO2_MODEL_NAME:-demo-simulator}"
 DEMO2_MODEL_NAMESPACE="${DEMO2_MODEL_NAMESPACE:-rhoai-maas-demo}"
 DEMO2_KC_REALM="${DEMO2_KC_REALM:-sso}"
 DEMO2_KC_ROLE="${DEMO2_KC_ROLE:-user}"
+# shellcheck disable=SC2034 # used by other scripts/demo2/*.sh that source this file
 DEMO2_USER_KUBECONFIG="$SECRETS_DIR/${DEMO2_USER}.kubeconfig"
+# shellcheck disable=SC2034 # used by other scripts/demo2/*.sh that source this file
 DEMO2_USER_PASSWORD_FILE="$SECRETS_DIR/${DEMO2_USER}.password"
+# shellcheck disable=SC2034 # used by other scripts/demo2/*.sh that source this file
 DEMO2_USER_APIKEY_FILE="$SECRETS_DIR/${DEMO2_USER}.apikey"
 
 sso_url() {
