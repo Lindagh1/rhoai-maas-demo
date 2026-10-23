@@ -179,6 +179,53 @@ procedure a partner would actually need to follow is:
                  └─────────────────────────┘
 ```
 
+### Additional detail for the external-OIDC/Entra ID path: API keys and group membership
+
+The task spec asks specifically about three things for this path, none
+of which could be executed here (no real external OIDC provider on this
+sandbox), but which are worth stating precisely rather than left vague:
+
+- **API key creation through the MaaS API, as opposed to the
+  dashboard.** Everything this project exercised for Scenario C went
+  through the dashboard's "Create API key" UI, which under the hood
+  calls the MaaS management API (the same one briefly inspected during
+  this project's security remediation, e.g. `GET /maas-api/v1/api-keys`
+  with an owner's own bearer token — confirmed to return only that
+  caller's own keys, never a global admin listing). For any IdP,
+  including an external OIDC provider, a key can equally be created by
+  calling that same management API directly with a valid bearer token
+  for the authenticated user, instead of through the dashboard UI — the
+  dashboard is a thin client over this API, not a separate code path
+  with different authorization rules.
+- **Dashboard limitations for external OIDC users.** Nothing in this
+  project's investigation of the dashboard (Scenarios A/C/F) depends on
+  the specific IdP technology once a valid OpenShift OAuth session
+  exists — the dashboard itself doesn't know or care whether the
+  underlying identity came from HTPasswd, in-cluster Keycloak, or an
+  external OIDC provider like Entra ID; it only sees the resulting
+  OpenShift user/groups. The one place IdP technology *does* matter
+  directly is **non-interactive CLI login** (`oc login -u/-p` fails for
+  any OIDC/redirect-type provider, Entra ID included — the same real
+  `401` already documented above for this sandbox's own Keycloak), not
+  dashboard capability.
+- **Group membership captured at key-creation time.** An API key is
+  created scoped to one specific `MaaSSubscription`, and that
+  subscription's access grant is evaluated against the group(s) listed
+  in its `owner.groups` field at the time each request is authorized —
+  not "frozen" into the key at creation time. If a user is later removed
+  from `maas-demo2-developers` (or, for an external OIDC provider, their
+  `groups` claim stops including the mapped group on their next token
+  refresh), their existing key(s) would stop being authorized on their
+  *next* request, without needing to revoke the key itself — governance
+  is enforced per-request against current group membership, not baked
+  into the key at issuance. This inference is based on the verified
+  architecture (AuthPolicy evaluates `subjects.groups` against the
+  caller's current token/session, same as any Kubernetes/Kuadrant
+  AuthPolicy) rather than a live test performed on this sandbox (doing
+  so safely would require removing `maas-demo2-user` from
+  `maas-demo2-developers` mid-demo, which was judged unnecessary churn
+  on the one real identity this whole project relies on).
+
 ### Why `none` is also handled
 
 A brand-new sandbox might have no IdP configured at all yet (only
