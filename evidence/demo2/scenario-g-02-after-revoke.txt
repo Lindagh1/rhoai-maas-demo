@@ -1,0 +1,30 @@
+# Scenario G — Step 2: same disposable key, after real revocation
+Date: 2026-10-23T07:58:00Z (approx)
+Key: demo2-scenario-g-disposable-key (dashboard name)
+Revoked via: real dashboard flow (kebab menu > Revoke > typed exact key
+name into the "Delete modal input" confirmation field > Revoke button).
+Confirmed in the UI: the key disappeared from the default "Active" filter
+view of the API keys table (count dropped from 3 to 2).
+
+Checked via: scripts/demo2/30-verify-key-status.sh (same key file, same
+command, run again after revocation — only the dashboard state changed)
+
+GET /v1/models
+HTTP status: 403
+Body: (empty)
+
+## Real finding (documented, not assumed from the official docs)
+
+The official MaaS docs describe a revoked/invalid key as returning 401
+Unauthorized. The ACTUAL behavior observed on this cluster, confirmed
+across multiple independently revoked keys in this sandbox (this
+disposable key, plus two earlier keys revoked during security
+remediation), is consistently 403 Forbidden with an empty body — the
+same status code observed for "no AuthPolicy" in Scenario E, Test 1.
+This suggests revoked-key rejection and missing-AuthPolicy rejection
+share the same auth-layer code path in this installed version.
+
+scripts/demo2/30-verify-key-status.sh has been updated to treat 403 as
+the expected/correct revoked-key signature for this environment (while
+still accepting 401 as correct, in case a different sandbox/version
+matches the documented behavior).

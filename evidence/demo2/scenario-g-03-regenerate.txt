@@ -1,0 +1,46 @@
+# Scenario G — Step 3: regenerate (create a fresh replacement key)
+Date: 2026-10-23
+
+This half of the revoke/regenerate cycle was performed earlier in this
+same work session as genuine, real security remediation (not a staged
+test): two earlier API keys (dashboard names demo2-scenario-c-key and
+demo2-scenario-e-ratelimit-key) had been captured unsafely via a literal
+Shell command and were treated as exposed per project security policy.
+Both were revoked through the real dashboard flow (same kebab menu >
+Revoke > typed confirmation as Step 2 above), then confirmed dead via
+scripts/demo2/30-verify-key-status.sh (403, matching Step 2's finding).
+
+Two clean replacement keys were then created through the same real
+dashboard "Create API key" flow used throughout this project
+(never via API/CLI with an embedded secret):
+  - demo2-main-key      -> scoped to maas-demo2-subscription
+  - demo2-ratelimit-key -> scoped to maas-demo2-subscription-ratelimit-test
+
+Both were captured using the project's mandated one-time method (Write
+tool, directly from the browser's key-reveal dialog, immediately
+chmod 600, never re-typed into any Shell command afterward), and both
+were confirmed ACTIVE (HTTP 200 on GET /v1/models) via
+scripts/demo2/30-verify-key-status.sh. These are the two keys still in
+active use for Scenarios D, E, and F's evidence in this repository
+(see secrets/demo2/maas-demo2-user.apikey and
+secrets/demo2/maas-demo2-user.ratelimit.apikey — gitignored, not
+committed).
+
+## Summary of the full Scenario G cycle (real, not simulated)
+
+1. A real API key is created via the dashboard, scoped to a specific
+   subscription, usable for inference (HTTP 200).
+2. The key owner (or an admin with dashboard access) can revoke it via
+   a deliberate, typed-confirmation UI flow.
+3. A revoked key immediately stops working: HTTP 403 (not the
+   documented 401 — see scenario-g-02 for this discrepancy), with an
+   empty response body.
+4. A fresh replacement key can be created in seconds through the same
+   flow, with no infrastructure changes required (the underlying
+   MaaSSubscription/MaaSAuthPolicy pairing is untouched) — the new key
+   is immediately usable (HTTP 200).
+5. The plaintext value of any key is shown to its owner exactly once,
+   at creation time, in the dashboard's "API key created" dialog; there
+   is no way to retrieve it again afterward (confirmed by accident
+   earlier in this project when a dialog was closed before capture —
+   that key had to be revoked unused and replaced).

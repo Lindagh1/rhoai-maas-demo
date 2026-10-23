@@ -28,8 +28,11 @@ echo "Key file: $KEY_FILE"
 echo "HTTP status: $CODE"
 case "$CODE" in
   200) ok "Key is ACTIVE (200 on /v1/models)." ;;
-  401) ok "Key is REVOKED/INVALID as expected (401 Unauthorized)." ;;
-  403) warn "403 Forbidden (no authpolicy?) — not the expected revoke signature." ;;
+  # Verified real behavior of this installed MaaS version (not the docs'
+  # stated 401): revoked/invalid keys return 403 Forbidden. Confirmed
+  # repeatedly across multiple revoked keys in this sandbox.
+  403) ok "Key is REVOKED/INVALID (403 Forbidden — the actual observed signature for this MaaS version, not the documented 401)." ;;
+  401) ok "Key is REVOKED/INVALID (401 Unauthorized, as the docs state)." ;;
   429) warn "429 Too Many Requests (no subscription/quota?) — not the expected revoke signature." ;;
   *)   warn "Unexpected status $CODE" ;;
 esac
