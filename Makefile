@@ -2,7 +2,7 @@
         demo1-audit demo1-prereqs demo1-enable-maas demo1-deploy-model demo1-publish demo1-verify demo1-verify-twice demo1-cleanup demo1-all demo1-pdf \
         demo2-detect-idp demo2-create-identity demo2-grant-access demo2-setup demo2-audit demo2-verify \
         demo2-test-inference demo2-test-negative demo2-test-access demo2-test-rate-limit demo2-check-usage \
-        demo2-verify-key demo2-cleanup-access demo2-all
+	demo2-verify-key demo2-cleanup-access demo2-cleanup demo2-all
 
 install-rhoai-operator:
 	@./scripts/install-rhoai-operator.sh
@@ -146,6 +146,13 @@ demo2-verify-key:
 #   make demo2-cleanup-access CONFIRM=yes
 demo2-cleanup-access:
 	@CONFIRM=$(CONFIRM) bash scripts/demo2/99-cleanup-access.sh
+
+# Alias matching the task spec's exact required target name. Identical
+# to demo2-cleanup-access: removes only the Demo-2-named governance
+# objects (MaaSSubscription(s) + MaaSAuthPolicy), leaves identity/
+# group/model untouched, requires CONFIRM=yes:
+#   make demo2-cleanup CONFIRM=yes
+demo2-cleanup: demo2-cleanup-access
 
 # Full reproducible run-through on a fresh sandbox, up to (but not
 # including) the manual dashboard steps (Scenario C key creation) and
