@@ -1,0 +1,5 @@
+# Scenario E — Test 3: rate-limit exhaustion (isolated 50 tokens/1m subscription)
+Date: 2026-10-23T07:48:45Z
+Attempts until 429: 15
+Observed HTTP status: 429
+Too Many Requests

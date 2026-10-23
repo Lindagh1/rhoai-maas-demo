@@ -1,0 +1,22 @@
+# Demo 2 — authorization policy matching the subscription above.
+# A MaaSSubscription alone grants quota but NOT gateway access (users get
+# 403 Forbidden without this); a MaaSAuthPolicy alone grants gateway access
+# but NOT quota (users get 429 Too Many Requests without a subscription).
+# Both are required together — see docs/demo2/02-admin-runbook.md §2.
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: maas-demo2-access
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo2
+  annotations:
+    openshift.io/description: "Demo 2 — authorizes group maas-demo2-developers to reach demo-simulator (rhoai-maas-demo) through the MaaS gateway. Matches maas-demo2-subscription's groups and models exactly."
+spec:
+  subjects:
+    groups:
+      - name: maas-demo2-developers
+    users: []
+  modelRefs:
+    - name: demo-simulator
+      namespace: rhoai-maas-demo

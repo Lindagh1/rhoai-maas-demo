@@ -1,0 +1,29 @@
+# Demo 2 — main subscription used throughout the live demo (Scenario B/C/D/F/G).
+# Validated against: https://docs.redhat.com/.../deploy-and-manage-models-as-a-service
+# (section 1.14 "Manage Models-as-a-Service subscriptions") and the live CRD
+# schema (`oc explain maassubscription.spec --recursive` on this sandbox).
+#
+# Namespace: the default MaaS tenant namespace (`models-as-a-service`), NOT
+# the model's own namespace — confirmed by the official YAML example and by
+# the live AITenant/MaasTenantConfig ("default-tenant" in that namespace).
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: maas-demo2-subscription
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo2
+  annotations:
+    openshift.io/description: "Demo 2 — grants group maas-demo2-developers quota on demo-simulator (rhoai-maas-demo). Isolated demo subscription; does not touch any other sandbox user's subscription."
+spec:
+  owner:
+    groups:
+      - name: maas-demo2-developers
+    users: []
+  priority: 10
+  modelRefs:
+    - name: demo-simulator
+      namespace: rhoai-maas-demo
+      tokenRateLimits:
+        - limit: 2000
+          window: 1m

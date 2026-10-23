@@ -1,0 +1,12 @@
+# Scenario E — Test 2: authpolicy present, subscription absent
+Date: 2026-10-23T07:48:19Z
+Docs/spec implication: 429 Too Many Requests (no quota left)
+
+MaaSModelRef status at time of call:
+phase: Ready
+  GovernanceAttached: True (GovernancePaired) - Active governance pairing found
+  RuntimeReady: True (RuntimeHealthy) - Backend is healthy
+  Ready: True (Reconciled) - Governed and runtime-healthy
+
+Observed HTTP status: 403
+requested subscription not found

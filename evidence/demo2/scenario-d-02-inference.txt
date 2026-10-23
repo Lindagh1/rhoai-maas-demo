@@ -1,0 +1,29 @@
+# Scenario D — Step 2: POST /v1/chat/completions
+Date: 2026-10-23T07:17:00Z
+Model: publishers/rhoai-maas-demo/models/facebook/opt-125m
+HTTP status: 200
+## Response headers (rate-limit related)
+content-type: application/json
+## Response body
+{
+    "id": "chatcmpl-670f7797-66f4-5e05-8613-19833896ae3f",
+    "created": 1792739820,
+    "model": "facebook/opt-125m",
+    "usage": {
+        "prompt_tokens": 11,
+        "completion_tokens": 6,
+        "total_tokens": 17
+    },
+    "object": "chat.completion",
+    "kv_transfer_params": null,
+    "choices": [
+        {
+            "index": 0,
+            "finish_reason": "stop",
+            "message": {
+                "role": "assistant",
+                "content": "I am fine, how are "
+            }
+        }
+    ]
+}
