@@ -1,0 +1,11 @@
+# Scenario G — Step 1: disposable test key, active before revocation
+Date: 2026-10-23T07:56:30Z (approx)
+Key: demo2-scenario-g-disposable-key (dashboard name)
+Scoped subscription: maas-demo2-subscription-ratelimit-test
+Checked via: scripts/demo2/30-verify-key-status.sh (reads key only via `cat`,
+never as a literal command argument)
+
+GET /v1/models
+HTTP status: 200
+Body (first 200 chars):
+{"data":[{"id":"publishers/rhoai-maas-demo/models/facebook/opt-125m","created":1792679478,"object":"model","owned_by":"rhoai-maas-demo/demo-simulator","kind":"LLMInferenceService","url":"https://maas....

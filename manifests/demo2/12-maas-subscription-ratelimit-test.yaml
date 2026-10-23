@@ -1,0 +1,30 @@
+# Demo 2 — Scenario E / Test 3: a SEPARATE, deliberately low-quota
+# subscription dedicated to the rate-limit test. Kept apart from
+# maas-demo2-subscription (the one used for the rest of the demo) so that
+# triggering 429s here never affects the main happy-path walkthrough.
+#
+# Same group/model as the main subscription, lower priority: by default the
+# highest-priority subscription is auto-selected, so the rate-limit test
+# script must explicitly request THIS subscription by name when creating its
+# test API key (see scripts/demo2/50-test-rate-limit.sh).
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: maas-demo2-subscription-ratelimit-test
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo2
+  annotations:
+    openshift.io/description: "Demo 2 — Scenario E Test 3 only. Deliberately tiny token limit to safely trigger HTTP 429 with a bounded number of requests. Never used for the main demo pitch."
+spec:
+  owner:
+    groups:
+      - name: maas-demo2-developers
+    users: []
+  priority: 1
+  modelRefs:
+    - name: demo-simulator
+      namespace: rhoai-maas-demo
+      tokenRateLimits:
+        - limit: 50
+          window: 1m

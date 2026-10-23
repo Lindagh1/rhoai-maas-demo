@@ -1,0 +1,8 @@
+# Scenario F — MaaSSubscription CRD status schema (no usage field)
+Date: 2026-10-23T07:54:48Z
+.status field names: conditions,modelRefStatuses,phase,tokenRateLimitStatuses
+
+Real finding: none of these fields represent token/request usage or
+remaining quota. The CR only tracks readiness/reconciliation state.
+Usage data exists ONLY in Limitador's Prometheus counters (see
+scenario-f-01), which are aggregated per-model, not per-subscription.

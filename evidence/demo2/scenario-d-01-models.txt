@@ -1,0 +1,27 @@
+# Scenario D — Step 1: GET /v1/models
+Date: 2026-10-23T07:16:59Z
+HTTP status: 200
+{
+    "data": [
+        {
+            "id": "publishers/rhoai-maas-demo/models/facebook/opt-125m",
+            "created": 1792679478,
+            "object": "model",
+            "owned_by": "rhoai-maas-demo/demo-simulator",
+            "kind": "LLMInferenceService",
+            "url": "https://maas.apps.ocp.sv8wx.sandbox2633.opentlc.com/",
+            "ready": true,
+            "modelDetails": {
+                "description": "CPU-only llm-d-inference-sim, used to demonstrate MaaS governance without any GPU/vLLM workload.",
+                "displayName": "MaaS Demo Simulator"
+            },
+            "subscriptions": [
+                {
+                    "name": "maas-demo2-subscription",
+                    "description": "Demo 2 \u2014 grants group maas-demo2-developers quota on demo-simulator (rhoai-maas-demo). Isolated demo subscription; does not touch any other sandbox user's subscription."
+                }
+            ]
+        }
+    ],
+    "object": "list"
+}

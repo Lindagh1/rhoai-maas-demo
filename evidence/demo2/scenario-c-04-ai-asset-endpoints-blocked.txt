@@ -1,0 +1,79 @@
+# Scenario C (addendum) — "AI asset endpoints" (Tech Preview) model-endpoints
+# temporary-key flow: real, verified BLOCKER
+Date: 2026-10-23
+Identity: maas-demo2-user (genuine non-admin end-user)
+
+## Context
+
+Red Hat's end-user documentation describes two ways to get an API key:
+  1. A short-lived (~1 hour) key generated directly from a model's entry
+     on the "AI asset endpoints" page.
+  2. A key with configurable expiration (up to 90 days) created from the
+     dedicated "API keys" page, scoped to a chosen subscription.
+
+Path 2 has been fully exercised and verified in this project (Scenario C,
+docs/demo2/03-end-user-runbook.md) — PASS.
+
+Path 1 was investigated here. Earlier in this project, visiting "AI asset
+endpoints" with no Data Science Project selected showed:
+  "You must create a project to begin"
+This is itself a real, previously undocumented finding: this page is
+scoped to a Project, unlike the API-keys/Subscriptions pages.
+
+## This test: self-provisioning a Project, then retrying
+
+maas-demo2-user successfully self-provisioned a new Data Science Project
+("maas-demo2-user-project") through the real dashboard "Create project"
+flow — confirming the `self-provisioners` ClusterRoleBinding
+(`system:authenticated:oauth` -> `self-provisioner`) does let an ordinary
+authenticated user create their own OpenShift Project, exactly as
+identified (but not yet tested) earlier in this project.
+
+With that Project selected, "AI asset endpoints" > Models now loads (no
+longer blocked by "you must create a project"), but immediately shows:
+
+    Unable to load models
+    There was a problem loading models. Try refreshing the page.
+
+## Root cause (captured directly, not guessed)
+
+Captured the real network request/response via a CDP-driven `fetch()`
+against the exact endpoint the page itself calls:
+
+    GET /gen-ai/api/v1/maas/models?namespace=maas-demo2-user-project
+
+Response body:
+
+    {
+        "error": {
+            "code": "403",
+            "message": "user does not have permission to access services in this namespace"
+        }
+    }
+
+## Real finding
+
+The "AI asset endpoints" (Tech Preview) page does not discover models via
+the user's MaaS *subscriptions* at all — it queries for model-serving
+resources scoped to the **currently selected Project's namespace**
+specifically (`namespace=<selected-project>` in the API call). Even as
+the owner of a Project they just self-provisioned, maas-demo2-user got a
+genuine `403` from this specific endpoint, immediately, with no further
+action taken. Demo 1's model (`demo-simulator`) lives in the admin-owned
+`rhoai-maas-demo` namespace, not in the end-user's own project — and even
+leaving that mismatch aside, project ownership alone was not sufficient
+RBAC for this particular Tech Preview API.
+
+## Conclusion for this scenario
+
+The "temporary 1-hour API key generated from model endpoints" flow is
+**BLOCKED** on this sandbox for a genuine non-admin end-user, via this
+real, captured 403 — not simulated, not assumed. The only verified,
+working path to obtain a usable API key on this installed RHOAI 3.5 MaaS
+version is the "API keys" page (Scenario C, Path 2 above), scoped to an
+admin-granted subscription. This is recorded as a genuine Tech Preview
+limitation in DEMO2-RESULTS.md, not a fabricated success.
+
+Cleanup: the disposable "maas-demo2-user-project" Project was deleted
+immediately after this test (self-service, by its own owner) to leave no
+extra sandbox clutter.

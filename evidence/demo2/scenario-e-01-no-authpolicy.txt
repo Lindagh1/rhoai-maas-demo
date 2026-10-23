@@ -1,0 +1,12 @@
+# Scenario E — Test 1: subscription present, authpolicy absent
+Date: 2026-10-23T07:47:03Z
+Docs/spec implication: 403 Forbidden (auth layer rejects, gateway route still present)
+
+MaaSModelRef status at time of call:
+phase: Pending
+  GovernanceAttached: False (NoPairingFound) - No active subscription and auth policy pairing found
+  RuntimeReady: True (RuntimeHealthy) - Backend is healthy
+  Ready: False (BackendNotReady) - Awaiting governance pairing
+
+Observed HTTP status: 403
+Access denied
