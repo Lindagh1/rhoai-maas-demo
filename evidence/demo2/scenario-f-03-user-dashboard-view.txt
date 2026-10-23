@@ -1,0 +1,61 @@
+# Scenario F — Non-admin dashboard usage visibility (real UI capture)
+Date: 2026-10-23T07:55:00Z (approx)
+Captured as: maas-demo2-user (genuine non-admin end-user session, dashboard
+"Gen AI studio" > "API keys" > "Subscriptions" tab)
+Method: document.querySelector('main').innerText via CDP Runtime.evaluate
+(exact rendered text, not paraphrased)
+
+## Subscriptions tab — "Subscription view" (collapsed)
+
+API keys
+API keys
+Subscriptions
+
+View your subscriptions and the models they give you access to.
+
+Subscription view
+Model view
+Expand
+
+Subscription
+
+maas-demo2-subscription
+1 active key
+
+maas-demo2-subscription-ratelimit-test
+0 active keys
+
+## Subscriptions tab — row expanded (maas-demo2-subscription)
+
+Name    Token limits
+
+MaaS Demo Simulator
+demo-simulator
+  2,000 / 1 minute
+
+## Subscriptions tab — "Model view"
+
+Model
+
+MaaS Demo Simulator
+demo-simulator
+
+## Real finding
+
+The non-admin end-user dashboard shows, per subscription/model:
+  - subscription name
+  - number of active API keys tied to it
+  - the CONFIGURED token-rate-limit ceiling (e.g. "2,000 / 1 minute")
+
+It does NOT show, anywhere in this UI (checked both Subscription view and
+Model view, both collapsed and expanded):
+  - actual token/request consumption so far
+  - remaining quota in the current window
+  - any usage history, graph, or chart
+  - any indication of how close the user is to their limit
+
+This means: as a non-admin user, the ONLY way to discover you have been
+rate-limited is to actually make a request and receive an HTTP 429 (see
+evidence/demo2/scenario-e-03-rate-limit.txt) — there is no proactive
+visibility into consumption from the dashboard itself. This is a genuine,
+verified product limitation as of RHOAI 3.5's MaaS UI, not an assumption.

@@ -1,0 +1,29 @@
+# Scenario F — Admin-side usage visibility (Limitador Prometheus metrics)
+Date: 2026-10-23T07:54:47Z
+
+Raw /metrics (filtered to the counters relevant to Demo 2's model):
+# HELP authorized_calls Authorized calls
+# TYPE authorized_calls counter
+authorized_calls{limitador_namespace="rhoai-maas-demo/demo-simulator-kserve-route"} 15
+# TYPE authorized_hits counter
+authorized_hits{limitador_namespace="rhoai-maas-demo/demo-simulator-kserve-route"} 68
+# HELP limited_calls Limited calls
+# TYPE limited_calls counter
+limited_calls{limitador_namespace="rhoai-maas-demo/demo-simulator-kserve-route"} 1
+# HELP datastore_partitioned Limitador is partitioned from backing datastore
+# TYPE datastore_partitioned gauge
+# HELP limitador_up Limitador is running
+# TYPE limitador_up gauge
+limitador_up 1
+
+Real finding: these counters are scoped per Gateway HTTPRoute
+(i.e. per model, label 'limitador_namespace'), not per-subscription,
+per-user, or per-API-key. An admin can see aggregate traffic and
+rate-limit rejections for a model, but cannot attribute them to a
+specific subscriber from this metric alone.
+
+Scrape wiring (pre-provisioned, not created by this demo):
+  ownerReferences:
+  - apiVersion: maas.opendatahub.io/v1alpha1
+    kind: Config
+    name: default
