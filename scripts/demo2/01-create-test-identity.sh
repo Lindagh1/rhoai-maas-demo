@@ -8,7 +8,7 @@
 # Idempotent: safe to re-run. Only touches demo2-labelled resources plus,
 # additively, the existing IdP backing store (one new user line/record).
 # Never modifies existing users, other IdP entries, or admin permissions.
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091
 source scripts/demo2/lib.sh

@@ -8,13 +8,16 @@
 #   Test 3: rate-limit exhaustion on the deliberately tiny (50 tokens/1m)
 #           maas-demo2-subscription-ratelimit-test subscription -> expect 429
 #
-#   REAL FINDING (this installed MaaS version, confirmed on-cluster):
-#   governance pairing (subscription + authpolicy) is evaluated per-model,
-#   not per-key. Removing EITHER half flips MaaSModelRef into
-#   Pending/NoPairingFound, which withdraws the model from the Gateway's
-#   HTTPRoute entirely. The practical effect for Tests 1 & 2 is an HTTP
-#   404 (model not found at the gateway) rather than the 403/429 one might
-#   expect from an auth/quota-layer rejection with the route still active.
+#   REAL FINDINGS (this installed MaaS version, confirmed on-cluster):
+#   - Test 1 (no AuthPolicy): returns 403 — matches the docs' implication.
+#   - Test 2 (key's own subscription deleted, but a DIFFERENT subscription
+#     still satisfies the model's governance pairing so it stays Ready):
+#     returns 403 with body "requested subscription not found". The key's
+#     access check is bound to its specific granting subscription — not
+#     the docs-implied 429 (which is reserved for genuine quota exhaustion
+#     on an active subscription, see Test 3).
+#   - Test 3 (rate-limit exhaustion on a dedicated 50-tokens/1m sub):
+#     returns 429 after bounded requests — matches the docs.
 #   This script reports whatever status is actually observed; it does not
 #   force the documented expectation.
 #
@@ -29,6 +32,9 @@
 #     uncontrolled load test.
 #   - Reads the API key only from local files via `cat`; never embeds a
 #     key value as a literal in this script or in any command it runs.
+# NOTE: -e is deliberately omitted. This script expects non-zero exits from
+# curl (403, 429) and oc delete — they are the test outcomes being captured,
+# not errors. Governance restoration runs via `trap` regardless of exit path.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091

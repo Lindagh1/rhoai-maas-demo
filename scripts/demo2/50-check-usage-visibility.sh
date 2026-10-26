@@ -23,6 +23,9 @@
 #      configured token-rate-limit ceiling (e.g. "2,000 / 1 minute")
 #      and the count of active API keys — never actual consumption,
 #      remaining quota, or any usage history/graph.
+# NOTE: -e is deliberately omitted. This script probes Limitador metrics via
+# port-forward + curl and inspects CRD schemas — soft failures are expected
+# and classified, not fatal errors.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091

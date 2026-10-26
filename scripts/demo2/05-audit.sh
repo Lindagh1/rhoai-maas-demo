@@ -2,6 +2,10 @@
 # Demo 2 — consolidated, read-only audit. Safe to run on any sandbox,
 # at any time, before/after any other demo2 script. Never mutates
 # anything, never prints a secret value.
+# NOTE: -e is deliberately omitted. Audit probes resources that may not exist
+# yet (group, identity, governance CRs, secret files) and reports their
+# presence/absence — every `oc get` failure is an expected, informational
+# branch, not an error.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091
