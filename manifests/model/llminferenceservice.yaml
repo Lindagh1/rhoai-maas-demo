@@ -12,6 +12,11 @@ metadata:
   labels:
     app.kubernetes.io/part-of: rhoai-maas-demo
     app.kubernetes.io/component: demo1-native-model
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/model-type: "generative"
+    openshift.io/display-name: "demo-simulator"
+    openshift.io/description: "CPU simulator for MaaS demo (llm-d-inference-sim)"
 spec:
   model:
     uri: hf://sshleifer/tiny-gpt2
