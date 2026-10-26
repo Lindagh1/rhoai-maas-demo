@@ -1,0 +1,60 @@
+# Demo 2 — RBAC so maas-demo2-user can see demo-simulator in the RHOAI dashboard
+# (Gen AI studio -> AI asset endpoints -> Models tab, and the Playground).
+#
+# ROOT CAUSE (discovered live on this sandbox, confirmed via dashboard backend
+# logs in redhat-ods-applications/rhods-dashboard):
+#   GET /gen-ai/api/v1/maas/models?namespace=rhoai-maas-demo  -> 403
+#   GET /gen-ai/api/v1/aaa/models?namespace=rhoai-maas-demo   -> 403
+# The dashboard BFF issues a CLUSTER-WIDE list on llminferenceservices.serving.kserve.io
+# (not namespace-scoped) to discover models, using the caller's own token.
+# A plain namespace `view`/`admin` RoleBinding in rhoai-maas-demo is NOT enough —
+# confirmed via:
+#   oc auth can-i list llminferenceservices --all-namespaces --as=maas-demo2-user  # -> no (before this fix)
+# Granting a ClusterRole bound via ClusterRoleBinding fixes it:
+#   oc auth can-i list llminferenceservices --all-namespaces --as=maas-demo2-user  # -> yes (after)
+#
+# Project-level view access (so the project even shows up in the Project dropdown
+# on AI asset endpoints) is granted separately as a namespace RoleBinding below.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: maas-demo-llminferenceservice-viewer
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+rules:
+  - apiGroups: ["serving.kserve.io"]
+    resources: ["llminferenceservices"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: maas-demo2-user-llminferenceservice-viewer
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+subjects:
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: maas-demo2-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: maas-demo-llminferenceservice-viewer
+---
+# Project-level access so rhoai-maas-demo appears in the dashboard's Project
+# selector for this non-admin user (admin ClusterRole = can view + use Playground).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: maas-demo2-user-project-admin
+  namespace: rhoai-maas-demo
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+subjects:
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: maas-demo2-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
