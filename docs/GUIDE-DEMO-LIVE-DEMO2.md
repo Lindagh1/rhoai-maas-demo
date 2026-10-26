@@ -84,11 +84,14 @@ Demo 1 : publier le modèle en MaaS
 
 > « Voici les deux manifestes de gouvernance, séparés par responsabilité : la Subscription dit COMBIEN (quota), l'AuthPolicy dit QUI (autorisation). Les deux sont dans le namespace `models-as-a-service`, pas dans celui du modèle — c'est le tenant MaaS. »
 
-**↔ Dashboard RHOAI (admin) :**
-1. Si pas encore déployé, terminal : `make demo2-grant-access`
-2. Montre la sortie : validation `dry-run=server`, MaaSModelRef repasse à `Ready`
+**↔ Dashboard RHOAI (admin) — vue gouvernance MaaS :**
+1. **Settings → MaaS governance** → onglet **Subscriptions**
+2. Montre `maas-demo2-subscription` : statut **Active**, groupes, modèles, token limits
+3. Onglet **Authorization policies** → montre `maas-demo2-access` : statut **Active**
 
-(Mentionner rapidement : *« Le dashboard propose aussi une case "Create a matching authorization policy" pour faire ça en un clic côté UI — on montre ici le chemin déclaratif, celui qu'on a pu vérifier intégralement. »*)
+> « Côté admin, Settings → MaaS governance regroupe subscriptions et policies en un seul endroit. L'admin peut aussi les créer/modifier directement depuis cette interface. »
+
+Si pas encore déployé, terminal : `make demo2-grant-access` → puis rafraîchir la page MaaS governance.
 
 ---
 
@@ -173,7 +176,8 @@ Montre les compteurs Prometheus réels de Limitador — `authorized_calls` / `li
 ```text
 0. Dashboard user: aucun accès (texte exact UI)
 1. Console: Search → MaaSSubscription + MaaSAuthPolicy (YAML des quotas + autorisations)
-   Terminal: make demo2-grant-access
+   Dashboard admin: Settings → MaaS governance → Subscriptions + Authorization policies
+   Terminal: make demo2-grant-access (si pas encore fait)
 2. Dashboard user: Create API key (révélée une fois)
 3. Terminal: make demo2-test-inference → 200 + usage tokens réels
 4. Terminal: make demo2-test-negative → 403 / 403 / 429 (tout restauré ensuite)

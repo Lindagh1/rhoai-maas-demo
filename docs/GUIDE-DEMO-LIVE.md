@@ -32,10 +32,12 @@ Vérifier que les 2 clés API fonctionnent (HTTP 200). Si elles sont mortes (403
 ```text
 Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
         │                                    │
-        ├─ LLMInferenceService ──────── Deployments → demo-simulator (Ready)
-        ├─ MaaSModelRef ─────────────── Gen AI studio → badge MaaS
-        ├─ MaaSSubscription ─────────── Subscriptions → quota visible
-        ├─ MaaSAuthPolicy ──────────── Create API key → sélecteur actif
+        ├─ LLMInferenceService ──────── Gen AI studio → AI asset endpoints (modèle visible)
+        ├─ MaaSModelRef ─────────────── Gen AI studio → AI asset endpoints → badge MaaS
+        ├─ MaaSSubscription ─────────── Settings → MaaS governance → Subscriptions (admin)
+        │                               Gen AI studio → API keys → Subscriptions (user)
+        ├─ MaaSAuthPolicy ──────────── Settings → MaaS governance → Authorization policies (admin)
+        │                               Gen AI studio → API keys → Create API key (user)
         └─ Gateway ──────────────────── curl /v1/chat/completions → 200
 ```
 
@@ -124,7 +126,7 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 
 ### Étape 3 — MaaSSubscription, le quota (2 min)
 
-**Console OpenShift :**
+**🔵 Console OpenShift (YAML technique) :**
 1. Search → Resources : `MaaSSubscription` → namespace **`models-as-a-service`**
 2. Clique sur `maas-demo2-subscription` → onglet **YAML**
 3. Montre :
@@ -142,18 +144,25 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 
 > « La Subscription, c'est le COMBIEN : quel groupe a droit à combien de tokens par minute sur quel modèle. Notez le namespace : models-as-a-service, pas celui du modèle — c'est le namespace du tenant MaaS. »
 
-**↔ Bascule vers le Dashboard RHOAI (session `maas-demo2-user`) :**
+**🟢 Bascule vers le Dashboard RHOAI (admin) — vue admin MaaS :**
+1. **Settings → MaaS governance** → onglet **Subscriptions**
+2. Montre `maas-demo2-subscription` : statut **Active**, groupes, modèles, token limits
+3. Clique sur la subscription → montre le détail (groupes, modèles, limites, priorité)
+
+> « Côté admin, voici la vue gouvernance dédiée MaaS : toutes les subscriptions, les policies, en un seul endroit. L'admin peut aussi les créer et les modifier depuis cette interface, pas seulement en YAML. »
+
+**🟣 Bascule vers le Dashboard RHOAI (session `maas-demo2-user`) — vue utilisateur :**
 1. Gen AI studio → API keys → onglet **Subscriptions**
 2. Montre l'abonnement `maas-demo2-subscription` avec le quota `2,000 / 1 minute`
 3. Développe la ligne pour voir le détail
 
-> « Côté utilisateur, voilà ce que ça donne : il voit son abonnement et sa limite configurée. Il ne voit jamais le YAML. »
+> « Et côté utilisateur : il voit son abonnement et sa limite. Trois vues du même objet — YAML, admin dashboard, user dashboard — chacune adaptée à son rôle. »
 
 ---
 
 ### Étape 4 — MaaSAuthPolicy, l'autorisation (2 min)
 
-**Console OpenShift :**
+**🔵 Console OpenShift (YAML technique) :**
 1. Search → Resources : `MaaSAuthPolicy` → namespace `models-as-a-service`
 2. Clique sur `maas-demo2-access` → onglet **YAML**
 3. Montre :
@@ -168,12 +177,19 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 
 > « L'AuthPolicy, c'est le QUI : quel groupe est autorisé à appeler quel modèle via la gateway. Sans cette pièce, même avec une Subscription, l'utilisateur prend un 403. Les deux sont nécessaires ensemble. »
 
-**↔ Bascule vers le Dashboard RHOAI (session `maas-demo2-user`) :**
+**🟢 Bascule vers le Dashboard RHOAI (admin) — vue admin MaaS :**
+1. **Settings → MaaS governance** → onglet **Authorization policies**
+2. Montre `maas-demo2-access` : statut **Active**, groupes autorisés, modèles
+3. Clique pour voir le détail
+
+> « L'admin voit toutes les policies d'autorisation ici. Il peut aussi en créer, modifier ou supprimer directement depuis cette interface. »
+
+**🟣 Bascule vers le Dashboard RHOAI (session `maas-demo2-user`) — preuve que ça marche :**
 1. Gen AI studio → API keys → **Create API key**
 2. Montre que le sélecteur de Subscription est **actif** (pas grisé) → preuve que l'AuthPolicy fonctionne
 3. Créer la clé → révéler une fois → copier
 
-> « La preuve que l'autorisation fonctionne : l'utilisateur peut créer une clé. Sans l'AuthPolicy, ce sélecteur serait désactivé et afficherait "No subscriptions available". »
+> « La preuve côté utilisateur : il peut créer une clé. Sans l'AuthPolicy, ce sélecteur serait désactivé — "No subscriptions available". »
 
 ---
 
@@ -254,8 +270,10 @@ PARTIE 1 — LE MODÈLE
 
 PARTIE 2 — LA GOUVERNANCE
   Console: Search → MaaSSubscription → ns models-as-a-service (YAML: quota)
-  Dashboard user: Subscriptions → 2,000 / 1 minute
+  Dashboard admin: Settings → MaaS governance → Subscriptions (Active, quotas)
+  Dashboard user: Gen AI studio → API keys → Subscriptions (vue utilisateur)
   Console: Search → MaaSAuthPolicy → ns models-as-a-service (YAML: groups)
+  Dashboard admin: Settings → MaaS governance → Authorization policies (Active)
   Dashboard user: Create API key → sélecteur actif → créer
   Terminal: make demo2-test-inference → 200
   Terminal: make demo2-test-negative → 403 / 403 / 429
