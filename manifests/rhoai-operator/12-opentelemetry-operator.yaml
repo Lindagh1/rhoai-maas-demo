@@ -1,0 +1,35 @@
+# Red Hat build of OpenTelemetry (OpenTelemetry Collector operator) —
+# also required by DSCInitialization monitoring preconditions:
+# "OpenTelemetryCollector operator must be installed for OpenTelemetry
+# configuration". Installing only the Cluster Observability Operator (COO)
+# is NOT sufficient; without this operator too, DSCInitialization stays
+# Ready=False / ProvisioningSucceeded=False with reason MissingOperator.
+#
+# Idempotent: `oc apply -f` is a no-op once installed.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-opentelemetry-operator
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: opentelemetry-operator
+  namespace: openshift-opentelemetry-operator
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: opentelemetry-product
+  namespace: openshift-opentelemetry-operator
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+spec:
+  channel: stable
+  name: opentelemetry-product
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

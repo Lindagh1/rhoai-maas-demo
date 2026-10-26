@@ -25,6 +25,17 @@ rules:
   - apiGroups: ["serving.kserve.io"]
     resources: ["llminferenceservices"]
     verbs: ["get", "list", "watch"]
+  # Confirmed live via a real browser-session 403 body:
+  #   {"error":{"code":"403","message":"user does not have permission to
+  #   access services in this namespace"}}
+  # Same cluster-wide-list pattern as llminferenceservices above:
+  #   oc auth can-i list services --all-namespaces --as=maas-demo2-user  # -> no (before)
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -2,7 +2,8 @@
 ## Active demos — this is what you want
 ## ============================================================================
 
-.PHONY: demo1-audit demo1-prereqs demo1-enable-maas demo1-deploy-model \
+.PHONY: demo1-audit demo1-prereqs demo1-enable-maas demo1-enable-observability \
+        demo1-deploy-model \
         demo1-publish demo1-verify demo1-verify-twice demo1-cleanup \
         demo1-all demo1-pdf \
         demo2-detect-idp demo2-create-identity demo2-grant-access \
@@ -23,6 +24,11 @@ demo1-prereqs:
 
 demo1-enable-maas:
 	@bash scripts/20-enable-maas.sh
+
+# Click-ops observability: "Observe & Monitor -> Dashboard" (Cluster / Models
+# tabs) natively in the OpenShift AI UI, backed by COO + OTel + Perses.
+demo1-enable-observability:
+	@bash scripts/25-enable-observability.sh
 
 demo1-deploy-model:
 	@bash scripts/30-deploy-native-model.sh
