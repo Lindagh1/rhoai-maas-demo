@@ -13,6 +13,7 @@ metadata:
     app.kubernetes.io/part-of: rhoai-maas-demo
     app.kubernetes.io/component: demo1-native-model
     opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"
   annotations:
     opendatahub.io/model-type: "generative"
     openshift.io/display-name: "demo-simulator"
