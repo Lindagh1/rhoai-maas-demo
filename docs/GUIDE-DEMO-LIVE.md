@@ -65,16 +65,30 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 
 > « Même modèle, vu depuis la console OpenShift AI. Un admin peut aussi le déployer en clics depuis cette interface. »
 
-**↔ (Bonus) Montrer le formulaire de déploiement :**
-1. Dans le même projet, clique **Deploy model**
-2. Montre les champs du wizard :
-   - **Model type** : Generative AI model (Example, LLM)
-   - **Model deployment** : Distributed inference with llm-d ← c'est le chemin natif
-   - **NE PAS cocher** « Use legacy deployment method »
-3. Dans Advanced settings → **Model availability** : montrer la case **Publish as MaaS**
-4. → **Cancel** (ne pas déployer, c'est juste pour montrer les options)
+**↔ Montrer le formulaire de déploiement (le geste admin en clics) :**
 
-> « Si un admin préfère les clics au YAML, il passe par ce wizard. La case "Publish as MaaS" fait exactement la même chose que le MaaSModelRef qu'on a vu côté YAML. »
+> ⚠️ NE PAS utiliser « Edit model deployment » sur l'existant — le formulaire sera vide
+> car le modèle a été déployé par YAML. Utiliser « **Deploy model** » (nouveau) à la place.
+
+1. Reste dans le projet `rhoai-maas-demo` → clique le bouton **Deploy model**
+2. **Page 1 — Model details** (remplir en live, 15 sec) :
+   - **Model location** → sélectionne **URI**
+   - **URI** → tape `hf://sshleifer/tiny-gpt2`
+   - **Model type** → `Generative AI model (Example, LLM)` (déjà sélectionné)
+   - **Name** → tape `demo-simulator`
+3. Clique **Next**
+4. **Page 2 — Model deployment** :
+   - Montre les deux options de déploiement :
+     - ~~Single-node with KServe~~ ← « C'est l'ancien chemin legacy »
+     - **☑ Distributed inference with llm-d** ← « C'est le chemin **natif** qu'on utilise »
+   - **NE PAS cocher** « Use legacy deployment method »
+5. Clique **Next**
+6. **Page 3 — Advanced settings** :
+   - Descends jusqu'à **Model availability**
+   - Montre la case **☑ Publish as MaaS** ← « C'est ce qui crée automatiquement le MaaSModelRef »
+7. → **Cancel** ⛔ (ne surtout pas cliquer Deploy — le GPU est déjà pris)
+
+> 💬 « Voilà le geste complet pour un admin qui préfère les clics au YAML : URI du modèle, type Generative AI, déploiement llm-d, et la case Publish as MaaS. Cette case fait exactement la même chose que le MaaSModelRef qu'on a vu côté YAML — deux chemins, même résultat. »
 
 ---
 
@@ -220,6 +234,7 @@ make demo2-check-usage
 | Montrer "AI asset endpoints" pour créer une clé temporaire | Ça renvoie un 403 |
 | Laisser tourner `demo2-test-negative` sans prévenir | ~90s, le client peut croire que c'est planté |
 | Cliquer "Deploy" dans le wizard au lieu de "Cancel" | Le GPU est déjà pris, ça échouerait |
+| Utiliser "Edit model deployment" sur demo-simulator | Le formulaire sera vide (modèle déployé par YAML, pas par le wizard) — utiliser "Deploy model" (nouveau) à la place |
 
 ---
 
@@ -229,7 +244,7 @@ make demo2-check-usage
 PARTIE 1 — LE MODÈLE
   Console: Search → LLMInferenceService → demo-simulator (YAML + Ready)
   Dashboard: Projects → rhoai-maas-demo → Deployments → Ready
-  Dashboard: (bonus) Deploy model wizard → montrer les champs → Cancel
+  Dashboard: Deploy model (NOUVEAU, pas Edit) → URI + llm-d + Publish as MaaS → Cancel
   Console: Search → MaaSModelRef → demo-simulator (YAML + GovernancePaired)
   Dashboard: Gen AI studio → AI asset endpoints → badge MaaS
 
