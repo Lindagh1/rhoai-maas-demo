@@ -8,7 +8,25 @@ Demo 2 : abonnements MaaS → clé API utilisateur → inférence gouvernée (qu
 ```
 
 Demo 2 réutilise le modèle et l'infrastructure de la Demo 1 sans les modifier — voir
-[`DEMO2-RESULTS.md`](DEMO2-RESULTS.md) pour l'état complet (PASS/BLOCKED/NOT TESTED par scénario).
+[`DEMO2-RESULTS.md`](DEMO2-RESULTS.md) pour l'état complet (PASS/BLOCKED/FAIL par scénario).
+
+## Chemin recommandé
+
+Si tu repars d'une **sandbox neuve**, utilise ce chemin simple :
+
+1. **Installer Demo 1**  
+   `make demo1-all`
+2. **Préparer Demo 2**  
+   `make demo2-audit` puis `make demo2-setup`
+3. **Vérifier l'état avant la salle**  
+   `make demo2-verify`
+4. **Suivre le guide live**  
+   [`docs/GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md)
+
+Ce repo distingue volontairement :
+- les **scripts de préparation/admin** (`make demo1-*`, `make demo2-*`)
+- le **guide live client** (ce qu'on montre à l'écran)
+- les **constats réels** quand le produit ne se comporte pas exactement comme la doc.
 
 ---
 
@@ -55,6 +73,7 @@ oc login --server="$SANDBOX_API" --token="$SANDBOX_TOKEN" --insecure-skip-tls-ve
 bash scripts/00-audit.sh
 bash scripts/10-prerequisites.sh
 bash scripts/20-enable-maas.sh
+bash scripts/25-enable-observability.sh
 bash scripts/30-deploy-native-model.sh
 bash scripts/40-publish-maas.sh
 bash scripts/50-verify.sh

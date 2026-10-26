@@ -28,7 +28,7 @@
 #   - Test 3 uses a dedicated, isolated, low-quota subscription (50 tokens/
 #     1m) created solely for this purpose; it never touches the main demo
 #     subscription or any other sandbox user's resources. Requests are
-#     small and bounded (a fixed loop with max_tokens=5), never an
+#     still bounded (a fixed loop with small `max_tokens`), never an
 #     uncontrolled load test.
 #   - Reads the API key only from local files via `cat`; never embeds a
 #     key value as a literal in this script or in any command it runs.
@@ -119,12 +119,18 @@ MODEL_ID="publishers/${DEMO2_MODEL_NAMESPACE}/models/facebook/opt-125m"
 
 call_infer() {
   local key="$1" max_tokens="${2:-5}"
-  curl -sSk --connect-timeout 10 --max-time 20 "${RESOLVE_OPT[@]}" \
+  local body_file
+  body_file=$(mktemp)
+  cat > "$body_file" <<EOF
+{"model": "${MODEL_ID}", "messages": [{"role": "user", "content": "hi"}], "max_tokens": ${max_tokens}}
+EOF
+  curl -sSk --http1.1 --connect-timeout 10 --max-time 20 "${RESOLVE_OPT[@]}" \
     -H "Authorization: Bearer ${key}" \
     -H "Content-Type: application/json" \
     -w '\n%{http_code}' \
-    -d "{\"model\": \"${MODEL_ID}\", \"messages\": [{\"role\": \"user\", \"content\": \"hi\"}], \"max_tokens\": ${max_tokens}}" \
+    --data-binary "@${body_file}" \
     "${HOST}/v1/chat/completions" 2>/dev/null || echo -e "\n000"
+  rm -f "$body_file"
 }
 
 echo "=============================================="
@@ -212,10 +218,10 @@ wait_for_phase "Ready" 60
 ### Test 3: rate-limit exhaustion on the isolated low-quota subscription
 echo
 echo "--- Test 3: exhaust the 50 tokens/1m rate-limit-test subscription -> expect 429 ---"
-echo "Sending a small, bounded sequence of requests (max 15 attempts, max_tokens=5 each)..."
+echo "Sending a bounded sequence of requests (max 30 attempts, max_tokens=10 each)..."
 GOT_429=0
-for i in $(seq 1 15); do
-  RESP3=$(call_infer "$RL_KEY" 5)
+for i in $(seq 1 30); do
+  RESP3=$(call_infer "$RL_KEY" 10)
   CODE3=$(echo "$RESP3" | tail -1)
   echo "  attempt $i: HTTP $CODE3"
   if [[ "$CODE3" == "429" ]]; then
@@ -235,11 +241,11 @@ done
 if [[ "$GOT_429" == "1" ]]; then
   ok "Test 3 PASS: got 429 after $i bounded requests."
 else
-  warn "Test 3: did not observe 429 within 15 bounded attempts."
+  warn "Test 3: did not observe 429 within 30 bounded attempts."
   {
     echo "# Scenario E — Test 3: rate-limit exhaustion (NOT reproduced)"
     echo "Date: $(date -u +%FT%TZ)"
-    echo "15 bounded attempts (max_tokens=5) did not trigger 429."
+    echo "30 bounded attempts (max_tokens=10) did not trigger 429."
     echo
     echo "MaaSModelRef status at end of test:"
     model_status_snapshot

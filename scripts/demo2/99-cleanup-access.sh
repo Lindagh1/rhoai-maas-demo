@@ -17,7 +17,8 @@ fi
 
 for obj in maassubscription/maas-demo2-subscription \
            maassubscription/maas-demo2-subscription-ratelimit-test \
-           maasauthpolicy/maas-demo2-access; do
+           maasauthpolicy/maas-demo2-access \
+           maasauthpolicy/maas-demo2-subscription-policy; do
   oc delete "$obj" -n models-as-a-service --ignore-not-found=true
 done
-ok "Demo 2 subscription/authpolicy objects removed. Test identity, group, and model are untouched."
+ok "Demo 2 subscription/authpolicy objects removed (including the known duplicate-policy cleanup if present). Test identity, group, and model are untouched."

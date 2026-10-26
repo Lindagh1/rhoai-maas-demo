@@ -31,7 +31,10 @@ fi
 
 echo
 echo "--- Governance objects ---"
-for obj in "maassubscription/${DEMO2_SUBSCRIPTION}" "maasauthpolicy/${DEMO2_AUTHPOLICY}"; do
+for obj in \
+  "maassubscription/${DEMO2_SUBSCRIPTION}" \
+  "maassubscription/${DEMO2_SUBSCRIPTION}-ratelimit-test" \
+  "maasauthpolicy/${DEMO2_AUTHPOLICY}"; do
   STATE=$(oc get "$obj" -n models-as-a-service -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
   if [[ "$STATE" == "Active" ]]; then
     ok "$obj: Active"
@@ -41,11 +44,16 @@ for obj in "maassubscription/${DEMO2_SUBSCRIPTION}" "maasauthpolicy/${DEMO2_AUTH
   fi
 done
 
+EXTRA_POLICY="maas-demo2-subscription-policy"
+if oc get maasauthpolicy "$EXTRA_POLICY" -n models-as-a-service >/dev/null 2>&1; then
+  warn "Found unexpected duplicate MaaSAuthPolicy/${EXTRA_POLICY}. It is harmless but confusing; delete it to keep the demo tidy."
+fi
+
 echo
 echo "--- API keys (if captured locally) ---"
 for f in "$DEMO2_USER_APIKEY_FILE" "$SECRETS_DIR/${DEMO2_USER}.ratelimit.apikey"; do
   if [[ -f "$f" ]]; then
-    bash scripts/demo2/30-verify-key-status.sh "$f" || FAIL=1
+    bash scripts/demo2/30-verify-key-status.sh "$f" active || FAIL=1
   else
     warn "$(basename "$f") not present — skipping (run Scenario C first if needed)."
   fi

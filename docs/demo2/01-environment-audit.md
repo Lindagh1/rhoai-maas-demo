@@ -119,7 +119,10 @@ Neither role is bound to `system:authenticated` or to any group — only `admin`
 | `ServiceMonitor` for `maas-controller` | `maas-controller-metrics` (redhat-ods-applications) — present |
 | `ServiceMonitor`/`PodMonitor` for the model itself | `kserve-llm-isvc-*` (rhoai-maas-demo) — present |
 
-**No additional observability enablement is required for Demo 2.** Demo 1's `scripts/10-prerequisites.sh` (UWM) already satisfies this. Scenario F will read Kuadrant/Limitador/maas-api metrics directly from Thanos/Prometheus (`oc get --raw` against the Thanos querier, or `oc exec`-free PromQL via the UWM route) and will separately verify what the **non-admin end user** can see in the dashboard's own "Subscriptions"/"API keys" pages versus the **admin-only** "Observe & monitor → Usage" view — per the task's instruction not to assume the non-admin user can see the full Usage dashboard without verification.
+**Observability for Demo 2 now depends on Demo 1's explicit observability step.** On a fresh sandbox, use `make demo1-all` (or at least `make demo1-enable-observability`) so the RHOAI dashboard's `Observe & Monitor` views are actually present before Demo 2. Scenario F then distinguishes:
+- what the **non-admin** user can see in `API keys` and `Observe & Monitor → Models`
+- what the **admin** can verify through Limitador metrics
+- and the known limitation that `Observe & Monitor → Usage` can still remain empty/partial on this build even after real traffic
 
 ---
 

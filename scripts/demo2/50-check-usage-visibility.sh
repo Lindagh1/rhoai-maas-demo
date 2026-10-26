@@ -4,20 +4,17 @@
 # Non-sensitive, read-only. No secrets involved (no API key is read or
 # used by this script at all).
 #
-# Captures two real, cluster-verified facts:
+# Captures three real, cluster-verified facts:
 #   1. ADMIN visibility: Kuadrant/Limitador exposes real-time Prometheus
-#      counters (authorized_calls, limited_calls, authorized_hits) per
-#      Gateway HTTPRoute (i.e. per model), scraped automatically into
-#      RHOAI's own monitoring stack via a ServiceMonitor that is
-#      pre-provisioned and OWNED by the MaaS operator's own `Config`
-#      CR (maas.opendatahub.io/v1alpha1) — not something this demo had
-#      to set up itself.
-#   2. REAL LIMITATION (documented, not assumed): this metric is
-#      aggregated per-model/route only. It does NOT break down usage
-#      by individual subscription, user, or API key. Confirmed by
-#      inspecting the MaaSSubscription CRD schema: its `.status` has no
-#      usage/consumption field at all, only readiness/reconciliation
-#      conditions.
+#      counters (`authorized_calls`, `limited_calls`, `authorized_hits`).
+#      On this build they carry at least subscription labels, and
+#      `authorized_hits` also carries a model label.
+#   2. REAL LIMITATION (documented, not assumed): these metrics do NOT
+#      expose a usable per-user breakdown on this build, and the built-in
+#      Observe & Monitor → Dashboard → Usage view can therefore stay at 0
+#      even after real traffic because its PromQL queries filter on a
+#      missing `user` label. Confirmed live while inspecting the
+#      Prometheus series actually present.
 #   3. NON-ADMIN visibility: confirmed via the real dashboard (as
 #      maas-demo2-user) that the Subscriptions tab shows only the
 #      configured token-rate-limit ceiling (e.g. "2,000 / 1 minute")
@@ -66,11 +63,12 @@ fi
   echo "Raw /metrics (filtered to the counters relevant to Demo 2's model):"
   echo "$METRICS" | grep -E '^(#|authorized_calls|limited_calls|authorized_hits|limitador_up)' || echo "(none)"
   echo
-  echo "Real finding: these counters are scoped per Gateway HTTPRoute"
-  echo "(i.e. per model, label 'limitador_namespace'), not per-subscription,"
-  echo "per-user, or per-API-key. An admin can see aggregate traffic and"
-  echo "rate-limit rejections for a model, but cannot attribute them to a"
-  echo "specific subscriber from this metric alone."
+  echo "Real finding: these counters include subscription labels, and"
+  echo "'authorized_hits' also includes a model label on this build."
+  echo "They still do NOT expose a usable per-user breakdown, which is why"
+  echo "the built-in Observe & Monitor -> Dashboard -> Usage view can stay"
+  echo "empty/zero after real traffic: its queries filter on user labels"
+  echo "that are not present in the scraped Limitador series."
   echo
   echo "Scrape wiring (pre-provisioned, not created by this demo):"
   oc get servicemonitor limitador-metrics -n redhat-ods-monitoring -o yaml 2>/dev/null \
@@ -96,8 +94,9 @@ echo "MaaSSubscription .status fields: $USAGE_FIELDS"
   echo
   echo "Real finding: none of these fields represent token/request usage or"
   echo "remaining quota. The CR only tracks readiness/reconciliation state."
-  echo "Usage data exists ONLY in Limitador's Prometheus counters (see"
-  echo "scenario-f-01), which are aggregated per-model, not per-subscription."
+  echo "Usage data does not live on the MaaSSubscription object itself."
+  echo "The real counters live in Limitador Prometheus metrics (see"
+  echo "scenario-f-01), but this build still lacks a usable per-user view."
 } > "$EVIDENCE_DIR/scenario-f-02-subscription-cr-no-usage-field.txt"
 if echo "$USAGE_FIELDS" | grep -qiE 'usage|consum|remaining|tokensUsed'; then
   warn "Unexpected: found a usage-like field ($USAGE_FIELDS) — update the finding above."

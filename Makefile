@@ -43,7 +43,9 @@ demo1-verify-twice:
 	@bash scripts/50-verify.sh && bash scripts/50-verify.sh
 
 # Full install from a fresh sandbox (requires prior `oc login`).
-demo1-all: demo1-audit demo1-prereqs demo1-enable-maas demo1-deploy-model demo1-publish demo1-verify-twice
+# Includes observability so the RHOAI dashboard's Observe & Monitor tabs
+# are ready before Demo 2.
+demo1-all: demo1-audit demo1-prereqs demo1-enable-maas demo1-enable-observability demo1-deploy-model demo1-publish demo1-verify-twice
 
 # Requires CONFIRM=yes, e.g.: make demo1-cleanup CONFIRM=yes
 demo1-cleanup:
@@ -114,8 +116,9 @@ demo2-check-usage:
 
 # Reusable, secret-safe key health check. Usage:
 #   make demo2-verify-key KEYFILE=secrets/demo2/maas-demo2-user.apikey
+#   EXPECT=revoked make demo2-verify-key KEYFILE=secrets/demo2/maas-demo2-user.apikey
 demo2-verify-key:
-	@bash scripts/demo2/30-verify-key-status.sh $(KEYFILE)
+	@bash scripts/demo2/30-verify-key-status.sh $(KEYFILE) $(EXPECT)
 
 # Scenario-cleanup for the admin-granted governance objects ONLY
 # (MaaSSubscription(s) + MaaSAuthPolicy). Leaves identity/group/model

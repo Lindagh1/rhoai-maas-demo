@@ -95,6 +95,10 @@ ok "No references to other models (legacy my-first-model untouched)."
 RATELIMIT_LIMIT=$(oc get maassubscription maas-demo2-subscription-ratelimit-test -n models-as-a-service -o jsonpath='{.spec.modelRefs[0].tokenRateLimits[0].limit}')
 ok "Rate-limit test subscription limit: ${RATELIMIT_LIMIT} tokens/1m (separate from the main ${SUB_LIMIT}-token subscription used in the rest of the demo)."
 
+if oc get maasauthpolicy maas-demo2-subscription-policy -n models-as-a-service >/dev/null 2>&1; then
+  warn "Found leftover duplicate MaaSAuthPolicy/maas-demo2-subscription-policy. It is harmless but was created accidentally by the dashboard UI in a previous run; delete it for a cleaner demo state."
+fi
+
 echo
 ok "Scenario B (declarative) complete. MaaSModelRef should now reach Ready=True (governance pairing satisfied)."
 info "Verify: oc get maasmodelref ${DEMO2_MODEL_NAME} -n ${DEMO2_MODEL_NAMESPACE}"

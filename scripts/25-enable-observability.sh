@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Idempotent: enables the RHOAI 3.5 Tech Preview "Observe & Monitor →
-# Dashboard" page (Cluster / Models / Usage tabs) in click-ops mode, i.e.
-# so an admin can see it natively in the OpenShift AI dashboard UI instead
-# of only via `make demo2-check-usage` (terminal/Limitador metrics).
+# Dashboard" page in click-ops mode, i.e. so an admin can see the native
+# OpenShift AI observability screens (Cluster / Models and, on this build,
+# additional LLM/MaaS-related tabs such as Usage) instead of relying only
+# on terminal-side checks.
 #
 # What this enables, end to end:
 #   1. Cluster Observability Operator (COO)        — manifests/rhoai-operator/11-*
@@ -138,7 +139,9 @@ fi
 
 echo ""
 ok "Observability stage complete."
-info "In the OpenShift AI dashboard: Observe & Monitor → Dashboard → Cluster / Models tabs."
-info "Note: this RHOAI 3.5.2 build ships generic Cluster/Model Perses dashboards only —"
-info "there is no built-in per-tenant 'MaaS Usage' Perses dashboard in this operator image."
-info "For MaaS-specific metrics (tokens, authorized/limited calls), use: make demo2-check-usage"
+info "In the OpenShift AI dashboard: Observe & Monitor → Dashboard."
+info "Observed live on this build: Cluster / Models plus additional LLM/MaaS-related tabs can appear."
+info "Important limitation: the built-in 'Usage' view may still stay partially empty on this build even"
+info "after real traffic, because the underlying metrics do not consistently carry the user-level labels"
+info "that its PromQL queries expect. Treat 'Models' as reliable, and use 'make demo2-check-usage' as the"
+info "ground-truth admin check for MaaS-specific counters."

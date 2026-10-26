@@ -121,7 +121,8 @@ scoped, not Project-namespace-scoped, and is fully verified working.
 
 Not a bug in this project's scripts — a real, repeatable behavior of
 this installed MaaS version. `scripts/demo2/30-verify-key-status.sh`
-treats **both** `403` and `401` as "correctly revoked" for this reason.
+supports `active` vs `revoked` expectations explicitly, and in
+`revoked` mode accepts **both** `403` and `401` for this reason.
 See Scenario G in [`04-test-scenarios.md`](04-test-scenarios.md).
 
 ## The browser tab's clipboard is not bridged to the system clipboard
@@ -222,3 +223,27 @@ constraints.
 **Fix:** always add `--http1.1` to `curl` when calling the MaaS gateway
 from inside any in-cluster pod (workbench, notebook, etc.) — calls from
 outside the cluster are unaffected and work fine over HTTP/2 either way.
+
+## Observe & Monitor → Dashboard → Usage stays at 0 even after real traffic
+
+**Real finding, captured live:** on this build, the admin dashboard can
+show a `Usage` tab, but all cards may remain at `0` even after real
+inference traffic and real `429` rate-limit events were generated.
+
+**Cause:** the underlying Limitador metrics are real, but they do not
+consistently expose the per-user labels that the built-in `Usage`
+dashboard queries filter on. We confirmed live that:
+- the counters exist and move (`authorized_calls_total`,
+  `limited_calls_total`, `authorized_hits_total`)
+- subscription labels are present
+- `authorized_hits_total` also carries a model label
+- a usable `user` label is missing on this build
+
+So the data pipeline is not fully absent, but the built-in dashboard is
+querying dimensions that are not actually populated.
+
+**Fix / workaround:** do not use the `Usage` tab as the main proof point
+in a live demo. Use:
+- `Observe & Monitor → Dashboard → Models` for a reliable visual view
+- `make demo2-check-usage` for the admin-side ground truth of MaaS
+  counters

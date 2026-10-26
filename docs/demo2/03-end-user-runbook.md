@@ -137,12 +137,16 @@ Sanitized (API-key-redacted) evidence:
 ## Scenario F — usage visibility (non-admin side)
 
 See `evidence/demo2/scenario-f-03-user-dashboard-view.txt` for the full,
-verbatim capture. Summary: the Subscriptions tab shows subscription
-name, active-key count, and the **configured** token-rate-limit ceiling
-— **never** actual consumption, remaining quota, or any usage
-history/graph, in either "Subscription view" or "Model view". The only
-way a non-admin discovers they've been rate-limited is receiving an
-actual `429` on a real request. The admin-side observability
+verbatim capture. Summary:
+- in **Gen AI studio → API keys**, the user sees the subscription name,
+  active-key count, and the **configured** token-rate-limit ceiling
+- in **Observe & Monitor → Dashboard → Models**, the user can also see a
+  real per-model dashboard view on this build
+- the user still does **not** get an actual consumption/remaining-quota
+  view per key or per subscription
+
+The only way a non-admin discovers they've been rate-limited is still
+receiving an actual `429` on a real request. The admin-side observability
 counterpart is in [`04-test-scenarios.md`](04-test-scenarios.md) /
 `evidence/demo2/scenario-f-01-admin-limitador-metrics.txt`.
 
@@ -169,7 +173,7 @@ As the end user, through the real dashboard (kebab menu on a key row →
 Full evidence: `evidence/demo2/scenario-g-01-before-revoke.txt`,
 `scenario-g-02-after-revoke.txt`, `scenario-g-03-regenerate.txt`.
 Reusable, secret-safe check:
-`scripts/demo2/30-verify-key-status.sh <keyfile>` (reads the key only
-via `cat`, never as a literal argument; treats both `403` — this
+`scripts/demo2/30-verify-key-status.sh <keyfile> revoked` (reads the key
+only via `cat`, never as a literal argument; accepts both `403` — this
 version's real signature — and `401` — the documented one — as a
-correctly-revoked key).
+correctly revoked key when run in `revoked` mode).

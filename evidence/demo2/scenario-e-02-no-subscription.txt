@@ -1,5 +1,5 @@
 # Scenario E — Test 2: authpolicy present, subscription absent
-Date: 2026-10-23T07:48:19Z
+Date: 2026-10-26T13:35:52Z
 Docs/spec implication: 429 Too Many Requests (no quota left)
 
 MaaSModelRef status at time of call:
@@ -9,4 +9,4 @@ phase: Ready
   Ready: True (Reconciled) - Governed and runtime-healthy
 
 Observed HTTP status: 403
-requested subscription not found
+

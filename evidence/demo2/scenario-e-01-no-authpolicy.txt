@@ -1,5 +1,5 @@
 # Scenario E — Test 1: subscription present, authpolicy absent
-Date: 2026-10-23T07:47:03Z
+Date: 2026-10-26T13:34:37Z
 Docs/spec implication: 403 Forbidden (auth layer rejects, gateway route still present)
 
 MaaSModelRef status at time of call:
@@ -9,4 +9,4 @@ phase: Pending
   Ready: False (BackendNotReady) - Awaiting governance pairing
 
 Observed HTTP status: 403
-Access denied
+
