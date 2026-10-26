@@ -60,10 +60,13 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 > « C'est le manifeste qui déploie le modèle. C'est du YAML standard, versionnable en Git. Sur un vrai cluster, le champ uri pointerait vers vos poids sur S3 ou HuggingFace. »
 
 **↔ Bascule vers le Dashboard RHOAI (admin) :**
-1. **Projects → `rhoai-maas-demo` → Deployments**
-2. Clique sur `demo-simulator` → montre le statut **Ready**
+1. **Gen AI studio → AI asset endpoints** → onglet Models → projet `rhoai-maas-demo`
+2. Montre `demo-simulator` avec les endpoints (External + Internal)
 
-> « Même modèle, vu depuis la console OpenShift AI. Un admin peut aussi le déployer en clics depuis cette interface. »
+> « Le chemin natif llm-d (nouveau dans RHOAI 3.5) apparaît dans Gen AI studio, pas dans Projects → Deployments qui ne montre que les déploiements legacy KServe/vLLM. Gen AI studio, c'est la vue MaaS — c'est ici que l'admin et l'utilisateur voient les modèles publiés. »
+
+> ⚠️ **Ne pas aller dans Projects → Model Deployments** pour chercher `demo-simulator` — il n'y sera pas.
+> C'est normal : cette vue ne liste que les `InferenceService` legacy, pas les `LLMInferenceService` natifs.
 
 **↔ Montrer le formulaire de déploiement (le geste admin en clics) :**
 
@@ -235,6 +238,7 @@ make demo2-check-usage
 | Laisser tourner `demo2-test-negative` sans prévenir | ~90s, le client peut croire que c'est planté |
 | Cliquer "Deploy" dans le wizard au lieu de "Cancel" | Le GPU est déjà pris, ça échouerait |
 | Utiliser "Edit model deployment" sur demo-simulator | Le formulaire sera vide (modèle déployé par YAML, pas par le wizard) — utiliser "Deploy model" (nouveau) à la place |
+| Chercher demo-simulator dans Projects → Model Deployments | Les `LLMInferenceService` natifs n'apparaissent pas ici — utiliser **Gen AI studio → AI asset endpoints** |
 
 ---
 
@@ -243,7 +247,7 @@ make demo2-check-usage
 ```
 PARTIE 1 — LE MODÈLE
   Console: Search → LLMInferenceService → demo-simulator (YAML + Ready)
-  Dashboard: Projects → rhoai-maas-demo → Deployments → Ready
+  Dashboard: Gen AI studio → AI asset endpoints → demo-simulator (endpoints)
   Dashboard: Deploy model (NOUVEAU, pas Edit) → URI + llm-d + Publish as MaaS → Cancel
   Console: Search → MaaSModelRef → demo-simulator (YAML + GovernancePaired)
   Dashboard: Gen AI studio → AI asset endpoints → badge MaaS
