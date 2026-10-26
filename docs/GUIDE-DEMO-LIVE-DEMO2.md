@@ -124,6 +124,57 @@ Montre : `GET /v1/models` → `200`, l'id complet du modèle. `POST /v1/chat/com
 
 ---
 
+### Étape 3bis — Inférence depuis un vrai Workbench utilisateur (optionnelle, fort impact visuel)
+
+Variante 100 % navigateur de l'Étape 3 : zéro `oc`, zéro terminal admin —
+uniquement ce que `maas-demo2-user` peut faire lui-même depuis le
+dashboard. Bon complément visuel si le public doute que le terminal
+tourne "pour de vrai" côté utilisateur.
+
+**Dashboard (session `maas-demo2-user`) :**
+1. **Projects → `rhoai-maas-demo`** (déjà visible — droits `admin` déjà
+   accordés sur ce projet).
+2. Onglet **Workbenches → Create workbench** : image **Minimal Python**
+   (démarrage rapide) ou **code-server** (VS Code, terminal intégré
+   familier) ; container size *Small* ; dans **Environment variables**,
+   ajoute une variable de type **Secret**, clé `DEMO2_API_KEY`, valeur =
+   une clé API déjà créée à l'Étape 2.
+3. ⚠️ **Piège vérifié en live sur cette version** : cette étape de
+   l'assistant ne s'applique parfois pas réellement (variable absente du
+   pod une fois démarré). Vérifie dans le terminal du workbench :
+   `echo "${#DEMO2_API_KEY}"` → doit être `> 0`. Si `0`, fix admin
+   rapide (voir `docs/demo2/05-troubleshooting.md`, section Workbench).
+4. **Open** une fois `Running`, puis **File → New → Terminal**.
+
+**Terminal du workbench :**
+```bash
+curl -sk --http1.1 -H "Authorization: Bearer $DEMO2_API_KEY" \
+  https://maas.apps.<domaine>/v1/models | python3 -m json.tool
+
+cat > /tmp/body.json << 'JSON'
+{"model": "publishers/rhoai-maas-demo/models/facebook/opt-125m", "messages": [{"role":"user","content":"hello"}], "max_tokens": 30}
+JSON
+curl -sk --http1.1 -H "Authorization: Bearer $DEMO2_API_KEY" \
+  -H "Content-Type: application/json" --data-binary @/tmp/body.json \
+  https://maas.apps.<domaine>/v1/chat/completions -w "\nHTTP %{http_code}\n"
+```
+
+⚠️ Deux pièges vérifiés en live, à anticiper :
+- **Toujours `--http1.1`** : un appel HTTP/2 (par défaut) depuis un pod
+  du cluster vers la route externe MaaS a été observé en TLS qui se
+  referme sans réponse. Depuis un terminal hors cluster, HTTP/2
+  fonctionne normalement — c'est spécifique au chemin pod→route externe.
+- **Jamais de JSON inline avec guillemets échappés** (`-d "{\"model\"...`)
+  dans un terminal web (code-server/VS Code Web) — ça se corrompt au
+  collage et donne un `404` trompeur. Toujours passer par un fichier
+  (`cat > fichier << 'JSON' ... JSON` puis `--data-binary @fichier`).
+
+**Phrase type :**
+
+> « Login dashboard, projet existant, workbench, et sa propre clé API — aucun accès `oc`, aucun droit admin. C'est exactement ce qu'un data scientist ferait pour consommer le modèle depuis son environnement de travail habituel. »
+
+---
+
 ### Étape 4 — Tests négatifs automatisés (1–2 min) — moment clé n°2
 
 Terminal :

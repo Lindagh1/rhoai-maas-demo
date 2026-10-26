@@ -145,3 +145,80 @@ rendering bug.
 
 **Fix:** none needed — this is the expected, verified behavior
 documented in Scenario A.
+
+## Workbench "Environment variables" step in the Create-workbench wizard doesn't actually apply
+
+**Real finding, captured live:** created a workbench
+(`code-server-notebook`) through the dashboard wizard, adding an
+environment variable (`DEMO2_API_KEY`, type Secret) in the "Environment
+variables" step. After the workbench started, the variable was simply
+**not present** on the running pod (`echo "${#DEMO2_API_KEY}"` → `0`).
+Confirmed via `oc get notebook <name> -o json`: no `env` or `envFrom`
+entry for it on the container spec at all, and no corresponding Secret
+object was ever created in the namespace either — the step was silently
+dropped, not misconfigured.
+
+**Fix (admin-side, applied live):**
+```bash
+oc create secret generic demo2-api-key -n <project> \
+  --from-file=DEMO2_API_KEY=secrets/demo2/maas-demo2-user.apikey
+oc patch notebook <workbench-name> -n <project> --type=json -p '[
+  {"op": "add", "path": "/spec/template/spec/containers/0/env/-",
+   "value": {"name": "DEMO2_API_KEY",
+             "valueFrom": {"secretKeyRef": {"name": "demo2-api-key", "key": "DEMO2_API_KEY"}}}}
+]'
+```
+Patching the `Notebook` CR restarts its pod automatically. For a live
+demo, treat the wizard's env-var step as unreliable on this version —
+verify with `oc get notebook ... -o json | grep -A3 env` (or just
+`echo "${#VAR}"` in the workbench terminal) before relying on it, and
+have this patch ready as a fallback.
+
+## `curl -d "<escaped-JSON>"` from a browser-based workbench terminal (code-server/VS Code Web) silently fails or 404s
+
+**Real finding, captured live:** a one-line `curl ... -d
+"{\"model\": \"...\", ...}"` (inline JSON with escaped double quotes)
+pasted into the code-server integrated terminal produced, across
+several attempts: a `bash: curl: No such file or directory` (a stray
+`<` character appeared before `curl` on paste), a `bash: !: event not
+found` (an unescaped `!` inside the JSON string triggered bash history
+expansion even inside double quotes), and finally a clean
+`HTTP/1.1 404 Not Found` with an empty body — while the *exact same*
+request body/headers sent from a normal terminal got a real `200`. The
+`-v` trace showed the header block split with a stray blank line before
+`Content-Type`/`Content-Length`, consistent with the long escaped-quote
+one-liner being mangled on paste into this specific web terminal.
+
+**Fix:** never build the JSON body as an inline `-d "..."` string with
+escaped quotes in a browser-based terminal. Write it to a file with a
+heredoc (no escaping needed) and send it with `--data-binary @file`:
+```bash
+cat > /tmp/body.json << 'JSON'
+{"model": "publishers/<ns>/models/<model>", "messages": [{"role":"user","content":"hello"}], "max_tokens": 30}
+JSON
+curl -sk --http1.1 -H "Authorization: Bearer $DEMO2_API_KEY" \
+  -H "Content-Type: application/json" --data-binary @/tmp/body.json \
+  "$(maas_host_url)/v1/chat/completions" -w "\nHTTP %{http_code}\n"
+```
+This resolved it immediately (real `200`, real model reply) on the first
+try with no other change.
+
+## HTTP/2 request from inside a workbench pod to the MaaS gateway hangs / closes with no response
+
+**Real finding, captured live:** `GET /v1/models` from inside a
+workbench pod (to the external MaaS route) over the default
+HTTP/2-via-ALPN negotiation completed the TLS handshake but then closed
+with `TLS alert, close notify` and `HTTP/2 stream 1 was not closed
+cleanly before end of the underlying stream` — no response ever
+received. The exact same request from a normal (non-pod) terminal
+succeeded over HTTP/2 without issue, and forcing `--http1.1` from inside
+the pod fixed it immediately (`200 OK`). No cluster-wide HTTP proxy is
+configured (`oc get proxy cluster`) and no `HTTP_PROXY`/`NO_PROXY` env
+vars are injected on the pod, so the exact mechanism (SDN/CNI path,
+MTU, or an intermediate HTTP/2-unfriendly hop specific to pod→external-
+route "hairpin" traffic) was not root-caused further given demo time
+constraints.
+
+**Fix:** always add `--http1.1` to `curl` when calling the MaaS gateway
+from inside any in-cluster pod (workbench, notebook, etc.) — calls from
+outside the cluster are unaffected and work fine over HTTP/2 either way.

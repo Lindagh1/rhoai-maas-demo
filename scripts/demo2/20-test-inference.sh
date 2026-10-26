@@ -81,11 +81,24 @@ fi
 # --- Step 2: real inference (/v1/chat/completions) ---
 echo
 echo "--- Step 2: POST /v1/chat/completions (body-based routing) ---"
-INFER_RESP=$(curl -sSk "${RESOLVE_OPT[@]}" --connect-timeout 10 --max-time 30 \
+# Body goes through a temp file + --data-binary, not an inline -d "<escaped
+# JSON>" string: an inline escaped-quote one-liner was found to get mangled
+# when typed/pasted in some terminals (e.g. a browser-based workbench
+# terminal), producing a malformed request and a misleading 404 — see
+# docs/demo2/05-troubleshooting.md. --http1.1 is also required when this
+# script runs from inside an in-cluster pod (e.g. a workbench), where
+# HTTP/2 to the external MaaS route was observed to hang/close with no
+# response; calls from outside the cluster work fine either way.
+BODY_FILE="$(mktemp)"
+trap 'rm -f "$BODY_FILE"' EXIT
+cat > "$BODY_FILE" <<EOF
+{"model": "${MODEL_ID}", "messages": [{"role": "user", "content": "Say hello from the Demo 2 end-user journey."}], "max_tokens": 30}
+EOF
+INFER_RESP=$(curl -sSk --http1.1 "${RESOLVE_OPT[@]}" --connect-timeout 10 --max-time 30 \
   -H "Authorization: Bearer ${API_KEY}" \
   -H "Content-Type: application/json" \
   -D - -o /tmp/demo2-infer-body.$$ -w '\n%{http_code}' \
-  -d "{\"model\": \"${MODEL_ID}\", \"messages\": [{\"role\": \"user\", \"content\": \"Say hello from the Demo 2 end-user journey.\"}], \"max_tokens\": 30}" \
+  --data-binary "@${BODY_FILE}" \
   "${HOST}/v1/chat/completions" 2>/dev/null || echo -e "\n000")
 INFER_HEADERS=$(echo "$INFER_RESP" | sed '$d')
 INFER_CODE=$(echo "$INFER_RESP" | tail -1)
