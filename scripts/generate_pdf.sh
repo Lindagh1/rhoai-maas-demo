@@ -14,11 +14,11 @@ md_to_pdf() {
   local title
   title=$(basename "$src" .md | tr '_-' ' ')
 
-  python3 - "$src" "$dst" "$title" <<'PY'
+  python3 - "$src" "$dst" "$title" "$CHROME" <<'PY'
 import pathlib, re, subprocess, sys, tempfile
 import markdown
 
-src, dst, title = sys.argv[1:4]
+src, dst, title, chrome_hint = sys.argv[1:5]
 text = pathlib.Path(src).read_text(encoding="utf-8")
 body = markdown.markdown(
     text,
@@ -58,8 +58,7 @@ html = f"""<!DOCTYPE html>
 with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as f:
     f.write(html)
     tmp = f.name
-chrome = subprocess.run(["which", "google-chrome"], capture_output=True, text=True)
-cmd = (chrome.stdout.strip() or "google-chrome")
+cmd = chrome_hint  # resolved by the bash wrapper (google-chrome → chromium fallback)
 user_data = tempfile.mkdtemp(prefix="chrome-pdf-")
 subprocess.run([
     cmd, "--headless=new", "--disable-gpu", "--no-sandbox",

@@ -6,6 +6,9 @@
 #
 # Reads the key value only via `cat` into a local shell variable (never
 # appears as a literal in this script's source, and is not printed).
+# NOTE: -e is deliberately omitted. This script evaluates HTTP status codes
+# (200, 401, 403, 429…) from curl and classifies them — every non-200 is an
+# expected branch to report, not an error.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091

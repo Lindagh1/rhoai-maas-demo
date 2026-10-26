@@ -10,6 +10,9 @@
 #   1. GET  /v1/models                 (OpenAI-compatible model discovery)
 #   2. POST /v1/chat/completions       (body-based routing, recommended)
 # Saves sanitized (API-key-redacted) evidence under evidence/demo2/.
+# NOTE: -e is deliberately omitted. This script inspects HTTP status codes
+# from curl and classifies them (200 = pass, anything else = warn/report);
+# a non-200 response is a finding to record, not a script failure.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091

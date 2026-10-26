@@ -9,7 +9,7 @@
 # Validates every manifest with a server-side dry-run against the live CRDs
 # before applying (per the task's explicit requirement — never blindly copy
 # manifests from older RHOAI releases).
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091
 source scripts/demo2/lib.sh

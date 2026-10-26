@@ -4,6 +4,9 @@
 # necessarily have the same IdP technology as the one this repo was first
 # built against. This script never mutates anything; it only reports what
 # strategy scripts/demo2/01-create-test-identity.sh would use.
+# NOTE: -e is deliberately omitted. This is a read-only detection script that
+# inspects resources which may or may not exist; non-zero exits from `oc get`
+# are expected, not errors.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091

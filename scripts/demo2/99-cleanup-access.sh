@@ -3,7 +3,7 @@
 # identity, not the model). Useful to re-demonstrate Scenario A ("no
 # subscription") on demand, and as part of the full Demo 2 cleanup.
 # Requires CONFIRM=yes.
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091
 source scripts/demo2/lib.sh

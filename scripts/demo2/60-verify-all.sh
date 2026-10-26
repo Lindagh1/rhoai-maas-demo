@@ -4,6 +4,9 @@
 # governance objects Active, and both known API keys (if present)
 # still ACTIVE. Read-only except for the quick GET /v1/models calls
 # this already performs via scripts/demo2/30-verify-key-status.sh.
+# NOTE: -e is deliberately omitted. This script accumulates PASS/FAIL across
+# multiple checks and reports them all, rather than aborting at the first
+# failure. The final exit code reflects the aggregate result.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 # shellcheck disable=SC1091
