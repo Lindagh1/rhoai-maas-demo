@@ -25,7 +25,7 @@ API_KEY="${DEMO2_API_KEY:-}"
 KEY_FILE="${DEMO2_API_KEY_FILE:-$DEMO2_USER_APIKEY_FILE}"
 if [[ -z "$API_KEY" ]]; then
   if [[ -f "$KEY_FILE" ]]; then
-    API_KEY="$(cat "$KEY_FILE")"
+    API_KEY="$(read_api_key_file "$KEY_FILE" 2>/dev/null || true)"
   else
     err "No API key found. Run Scenario C (dashboard) first, or set DEMO2_API_KEY / DEMO2_API_KEY_FILE."
     exit 1

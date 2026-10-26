@@ -26,6 +26,21 @@ DEMO2_USER_PASSWORD_FILE="$SECRETS_DIR/${DEMO2_USER}.password"
 # shellcheck disable=SC2034 # used by other scripts/demo2/*.sh that source this file
 DEMO2_USER_APIKEY_FILE="$SECRETS_DIR/${DEMO2_USER}.apikey"
 
+read_api_key_file() {
+  local path="$1"
+  python3 - <<'PY' "$path"
+from pathlib import Path
+import re
+import sys
+
+text = Path(sys.argv[1]).read_text(errors="replace")
+match = re.search(r"sk-oai-[A-Za-z0-9_/-]+", text)
+if not match:
+    sys.exit(1)
+print(match.group(0))
+PY
+}
+
 sso_url() {
   echo "https://sso.$(cluster_domain)"
 }

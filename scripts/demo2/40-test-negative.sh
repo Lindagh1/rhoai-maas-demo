@@ -50,8 +50,10 @@ HOST="$(maas_host_url)"
 
 [[ -f "$MAIN_KEY_FILE" ]] || { err "Missing $MAIN_KEY_FILE — run Scenario C first."; exit 1; }
 [[ -f "$RL_KEY_FILE" ]]   || { err "Missing $RL_KEY_FILE — create the rate-limit-test key first."; exit 1; }
-MAIN_KEY="$(cat "$MAIN_KEY_FILE")"
-RL_KEY="$(cat "$RL_KEY_FILE")"
+MAIN_KEY="$(read_api_key_file "$MAIN_KEY_FILE" 2>/dev/null || true)"
+RL_KEY="$(read_api_key_file "$RL_KEY_FILE" 2>/dev/null || true)"
+[[ -n "$MAIN_KEY" ]] || { err "Could not extract a valid API key from $MAIN_KEY_FILE."; exit 1; }
+[[ -n "$RL_KEY" ]] || { err "Could not extract a valid API key from $RL_KEY_FILE."; exit 1; }
 
 # Resolve gateway IP for clusters where DNS hasn't propagated to this shell
 # (same workaround as scripts/demo2/20-test-inference.sh and Demo 1's

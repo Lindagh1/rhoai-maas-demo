@@ -19,11 +19,19 @@ source scripts/demo2/lib.sh
 KEY_FILE="${1:?usage: $0 <path-to-keyfile> [active|revoked|any]}"
 EXPECT="${2:-${EXPECT_STATUS:-active}}"
 [[ -f "$KEY_FILE" ]] || { err "No such file: $KEY_FILE"; exit 1; }
-API_KEY="$(cat "$KEY_FILE")"
+API_KEY="$(read_api_key_file "$KEY_FILE" 2>/dev/null || true)"
 [[ -z "$API_KEY" ]] && { err "Key file is empty: $KEY_FILE"; exit 1; }
 
 HOST="$(maas_host_url)"
+# Resolve gateway IP for clusters where DNS hasn't propagated to this shell
+GATEWAY_ADDR=$(oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || echo "")
+RESOLVE_OPT=()
+if [[ -n "$GATEWAY_ADDR" ]] && echo "$GATEWAY_ADDR" | grep -qE '[a-zA-Z]'; then
+  GATEWAY_IP=$(dig +short "$GATEWAY_ADDR" 2>/dev/null | head -1 || true)
+  [[ -n "$GATEWAY_IP" ]] && RESOLVE_OPT=(--resolve "$(maas_hostname):443:${GATEWAY_IP}")
+fi
 RESP=$(curl -sSk --connect-timeout 10 --max-time 20 \
+  "${RESOLVE_OPT[@]}" \
   -H "Authorization: Bearer ${API_KEY}" \
   -w '\n%{http_code}' \
   "${HOST}/v1/models" 2>/dev/null || echo -e "\n000")

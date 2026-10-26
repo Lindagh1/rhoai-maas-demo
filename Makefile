@@ -7,7 +7,7 @@
         demo1-publish demo1-verify demo1-verify-twice demo1-cleanup \
         demo1-all demo1-pdf \
         demo2-detect-idp demo2-create-identity demo2-grant-access \
-        demo2-setup demo2-audit demo2-verify demo2-test-inference \
+        demo2-setup demo2-audit demo2-capture-keys demo2-verify demo2-test-inference \
         demo2-test-negative demo2-test-access demo2-test-rate-limit \
         demo2-check-usage demo2-verify-key demo2-cleanup-access \
         demo2-cleanup demo2-all \
@@ -91,6 +91,11 @@ demo2-audit:
 # Active, and both known API keys (if captured) still return 200.
 demo2-verify:
 	@bash scripts/demo2/60-verify-all.sh
+
+# Securely capture the two dashboard-created API keys into the expected
+# local secret files without echoing them to the terminal.
+demo2-capture-keys:
+	@bash scripts/demo2/21-capture-api-keys.sh
 
 # Scenario D: real OpenAI-compatible inference as maas-demo2-user.
 # Requires secrets/demo2/maas-demo2-user.apikey (create via dashboard,
