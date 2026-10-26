@@ -1,11 +1,14 @@
 # Guide démo live — Demo 2 (parcours utilisateur MaaS)
 
-**Public :** client / décideur / audience non technique
+**Public :** client / décideur / audience technique (Sopra Steria)
 **Durée cible :** 10–12 minutes
 **Pré-requis :** Demo 1 déjà jouée (ou au moins le modèle `demo-simulator` publié en MaaS) et `make demo2-verify` **vert** avant d'entrer en salle.
+**Voir aussi :** [`GUIDE-DEMO-LIVE.md`](GUIDE-DEMO-LIVE.md) — guide combiné Demo 1 + Demo 2 avec le modèle et la gouvernance.
 
-**Règle d'or (différente de la Demo 1) :**
-Demo 1 se joue 100 % console, zéro terminal. **Demo 2 mélange volontairement les deux** : le dashboard pour tout ce qu'un vrai utilisateur fait (clés API, abonnements), et un terminal pour les tests automatisés qui prouvent les codes HTTP réels (403, 429) sans attendre 15 clics devant le client. Annonce ce mélange dès le début, ce n'est pas un oubli de préparation.
+**Règle d'or :** chaque étape montre les **deux vues** :
+  - le **YAML dans la console OpenShift** (ce que le GitOps versionne)
+  - le **résultat dans le dashboard OpenShift AI** (ce que l'utilisateur voit)
+Plus le **terminal** pour les appels HTTP qui prouvent les codes réels (200, 403, 429).
 
 **Message unique à retenir :**
 
@@ -52,26 +55,46 @@ Demo 1 : publier le modèle en MaaS
 
 ---
 
-### Étape 1 — L'admin accorde l'accès, en déclaratif (2 min) — moment clé n°1
+### Étape 1 — L'admin accorde l'accès, en déclaratif (2–3 min) — moment clé n°1
 
-Terminal :
+**Console OpenShift (YAML) :**
+1. Search → Resources : `MaaSSubscription` → namespace **`models-as-a-service`**
+2. Clique sur `maas-demo2-subscription` → onglet **YAML** :
+   ```yaml
+   spec:
+     owner:
+       groups:
+         - name: maas-demo2-developers     # ← quel groupe
+     modelRefs:
+       - name: demo-simulator              # ← quel modèle
+         tokenRateLimits:
+           - limit: 2000                   # ← combien
+             window: 1m                    # ← par minute
+   ```
+3. Search → Resources : `MaaSAuthPolicy` → namespace `models-as-a-service`
+4. Clique sur `maas-demo2-access` → onglet **YAML** :
+   ```yaml
+   spec:
+     subjects:
+       groups:
+         - name: maas-demo2-developers     # ← QUI a le droit
+     modelRefs:
+       - name: demo-simulator              # ← sur QUEL modèle
+   ```
 
-```bash
-make demo2-grant-access
-```
+> « Voici les deux manifestes de gouvernance, séparés par responsabilité : la Subscription dit COMBIEN (quota), l'AuthPolicy dit QUI (autorisation). Les deux sont dans le namespace `models-as-a-service`, pas dans celui du modèle — c'est le tenant MaaS. »
 
-Montre la sortie : validation `dry-run=server` contre les CRD réelles, puis les deux `MaaSSubscription` et le `MaaSAuthPolicy` qui s'appliquent, puis `MaaSModelRef` qui repasse à `Ready`.
+**↔ Dashboard RHOAI (admin) :**
+1. Si pas encore déployé, terminal : `make demo2-grant-access`
+2. Montre la sortie : validation `dry-run=server`, MaaSModelRef repasse à `Ready`
 
-**Phrase type :**
-
-> « C'est le chemin GitOps : trois petits manifestes, nommés clairement — un abonnement qui donne accès à un groupe de démo avec une limite de débit définie, un second abonnement volontairement minuscule qu'on réutilisera pour le test de quota, et la politique d'autorisation qui fait le lien. Tout est scopé à ce groupe et ce modèle précis — ça ne peut pas accorder d'accès à autre chose sur le sandbox, et c'est idempotent : le rejouer ne change rien. »
-
-(Mentionner rapidement, sans s'arrêter : *« Le dashboard propose aussi une case "Create a matching authorization policy" pour faire ça en un clic côté UI — on montre ici le chemin déclaratif, celui qu'on a pu vérifier intégralement de bout en bout sur ce sandbox. »*)
+(Mentionner rapidement : *« Le dashboard propose aussi une case "Create a matching authorization policy" pour faire ça en un clic côté UI — on montre ici le chemin déclaratif, celui qu'on a pu vérifier intégralement. »*)
 
 ---
 
 ### Étape 2 — L'utilisateur découvre le modèle et crée sa clé (2 min)
 
+**↔ Dashboard RHOAI (session `maas-demo2-user`) :**
 1. Retour session `maas-demo2-user` → recharge l'onglet Subscriptions.
 2. Montre : l'abonnement apparaît, avec la limite configurée visible en développant la ligne.
 3. **Create API key** → sélectionne l'abonnement → montre l'expiration max (90 jours) → crée → révèle la clé une fois.
@@ -134,7 +157,8 @@ Montre les compteurs Prometheus réels de Limitador — `authorized_calls` / `li
 
 ### Étape 6 — Révoquer / régénérer (1–2 min)
 
-1. Dashboard, menu kebab sur une clé → **Revoke** → taper le nom exact pour confirmer.
+**↔ Dashboard RHOAI (session `maas-demo2-user`) :**
+1. Menu kebab (⋮) sur une clé → **Revoke** → taper le nom exact pour confirmer.
 2. Montre : la clé disparaît des clés actives ; rejoue le même appel `GET /v1/models` avec cette clé maintenant morte → vrai rejet (ce sandbox renvoie **`403`**, pas le `401` décrit par la doc — à dire explicitement, c'est un vrai constat).
 3. Crée une clé fraîche → vérifie qu'elle fonctionne immédiatement.
 
@@ -147,13 +171,14 @@ Montre les compteurs Prometheus réels de Limitador — `authorized_calls` / `li
 ## Aide-mémoire 1 page (2ᵉ écran / post-it)
 
 ```text
-0. maas-demo2-user → aucun accès (texte exact UI)
-1. make demo2-grant-access → MaaSSubscription + MaaSAuthPolicy
-2. Dashboard user → Create API key (révélée une fois)
-3. make demo2-test-inference → 200 + usage tokens réels
-4. make demo2-test-negative → 403 / 403 / 429 (tout restauré ensuite)
-5. make demo2-check-usage → compteurs Limitador réels
-6. Dashboard → Revoke (403, pas 401) → nouvelle clé → OK
+0. Dashboard user: aucun accès (texte exact UI)
+1. Console: Search → MaaSSubscription + MaaSAuthPolicy (YAML des quotas + autorisations)
+   Terminal: make demo2-grant-access
+2. Dashboard user: Create API key (révélée une fois)
+3. Terminal: make demo2-test-inference → 200 + usage tokens réels
+4. Terminal: make demo2-test-negative → 403 / 403 / 429 (tout restauré ensuite)
+5. Terminal: make demo2-check-usage → compteurs Limitador réels
+6. Dashboard user: Revoke (403, pas 401) → nouvelle clé → OK
 ```
 
 ---
