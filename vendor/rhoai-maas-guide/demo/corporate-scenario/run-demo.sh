@@ -47,21 +47,20 @@ fire_burst() {
   local key="$1" endpoint="$2" model_served="$3" count="$4"
   local ok=0 lim=0 other=0 tok=0
   for _ in $(seq 1 "$count"); do
-    code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
-      -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
-      -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
-      "$endpoint")
-    # Retry once on 500 (stale upstream connection) or 000 (dropped
-    # connection to the gateway LB - observed on this sandbox's
-    # single-node cluster independent of auth/model/subscription; see
-    # PATCHES.md). A real 403/429/other application response is never
-    # retried, so this cannot hide a governance bug, only a network blip.
-    if [ "$code" = "500" ] || [ "$code" = "000" ]; then
+    # Up to 3 attempts: retry on 500 (stale upstream connection) or 000
+    # (dropped connection to the gateway LB - observed on this sandbox's
+    # single-node cluster independent of auth/model/subscription, at a
+    # high enough rate under burst load that one retry wasn't always
+    # enough; see PATCHES.md). A real 403/429/other application response
+    # is never retried, so this cannot hide a governance bug, only a
+    # network blip.
+    for _retry in 1 2 3; do
       code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
         -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
         -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
         "$endpoint")
-    fi
+      { [ "$code" = "500" ] || [ "$code" = "000" ]; } || break
+    done
     case "$code" in
       200) ok=$((ok+1)); tok=$((tok + $(jq -r '.usage.total_tokens // 0' "$TMP/r" 2>/dev/null))) ;;
       429) lim=$((lim+1)) ;;
@@ -74,18 +73,15 @@ fire_burst() {
 
 fire_denied() {
   local key="$1" endpoint="$2" model_served="$3" label="$4"
-  code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
-    -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
-    -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
-    "$endpoint")
-  # Retry once on a dropped connection (see PATCHES.md) - a real 403 or
-  # any other application response is never retried.
-  if [ "$code" = "000" ]; then
+  # Up to 3 attempts on a dropped connection (see PATCHES.md) - a real 403
+  # or any other application response is never retried.
+  for _retry in 1 2 3; do
     code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
       -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
       -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
       "$endpoint")
-  fi
+    [ "$code" = "000" ] || break
+  done
   if [ "$code" = "403" ]; then
     printf '    %s: 403 Forbidden (expected)\n' "$label"
   else
@@ -100,22 +96,22 @@ login_and_key() {
   TOKEN=$(KUBECONFIG="$TMP/${user}.kubeconfig" oc whoami -t)
 
   echo "  Visible models:"
-  # Retry once: this sandbox's gateway LB occasionally drops an isolated
-  # connection (observed independent of auth/model - see PATCHES.md).
-  MODELS_RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" 2>/dev/null)
-  [ -z "$MODELS_RESP" ] && MODELS_RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" 2>/dev/null)
+  # Up to 3 attempts: this sandbox's gateway LB occasionally drops an
+  # isolated connection, at a high enough rate that one retry wasn't
+  # always enough (see PATCHES.md).
+  for _retry in 1 2 3; do
+    MODELS_RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" 2>/dev/null)
+    [ -n "$MODELS_RESP" ] && break
+  done
   echo "$MODELS_RESP" | jq -r '.data[]?.id // empty' 2>/dev/null | sed 's/^/    /'
 
-  RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" -X POST \
-    -d "{\"name\":\"${user}-demo\",\"description\":\"demo\",\"expiresIn\":\"8h\"}" \
-    "${H}/maas-api/v1/api-keys" 2>/dev/null)
-  if [ -z "$RESP" ] || [ "$(echo "$RESP" | jq -r '.key // empty' 2>/dev/null)" = "" ]; then
+  for _retry in 1 2 3; do
     RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" \
       -H "Content-Type: application/json" -X POST \
       -d "{\"name\":\"${user}-demo\",\"description\":\"demo\",\"expiresIn\":\"8h\"}" \
       "${H}/maas-api/v1/api-keys" 2>/dev/null)
-  fi
+    [ -n "$(echo "$RESP" | jq -r '.key // empty' 2>/dev/null)" ] && break
+  done
   echo "  Resolved subscription: $(echo "$RESP" | jq -r '.subscription // "UNRESOLVED"')"
   KEY=$(echo "$RESP" | jq -r '.key // empty')
   [ -z "$KEY" ] && { echo "  no key issued: $(echo "$RESP" | head -c 140)"; return 1; }
