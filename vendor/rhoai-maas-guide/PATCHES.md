@@ -176,25 +176,30 @@ clean up the specific `maassubscription`/`maasauthpolicy` objects it
 created inside it (which it already does, earlier in the same cleanup
 function), never the namespace itself.
 
-## Flaky/intermittent: Phase 4 auth-enforcement curl occasionally returns bare "000"
+## Environment characteristic (not patched): occasional bare "000" on isolated gateway requests
 
-**Symptom:** across repeated `verify.sh` runs on this sandbox, exactly one
-of the two Phase 4 checks ("Unauthenticated request" / "Invalid token" —
-never both, never consistently the same one) intermittently fails with
-`HTTP 000000` (the literal fallback `000` from the `|| echo "000"` guard,
-doubled because `curl`'s own `-w '%{http_code}'` also prints `000` on a
-connection-level failure before the shell's `||` fires). `maas-api`'s own
-access log shows **no corresponding request at all** for the failed
-attempts — the request never reached the app, so this isn't the platform
-mis-authenticating; it's a dropped/timed-out connection to the gateway
-Service/ELB.
+**Observation, not a script bug:** across 5 `verify.sh` runs on this
+sandbox, roughly 1 in ~15-20 individual `curl` calls to
+`https://maas.apps.ocp.mqgbd.sandbox840.opentlc.com` got a bare `000`
+(connection dropped/timed out) with **no corresponding entry in
+`maas-api`'s access log** — i.e. the request never reached the
+application. It was never the same logical check twice (seen once on
+"Unauthenticated request", once on "Invalid token", once on "Testing
+inference"), and a bare retry 3s later always succeeded. This points to
+occasional packet loss/connection drops on the path to the AWS NLB
+fronting `maas-default-gateway` on this particular sandbox, not an
+application or governance bug.
 
-**Fix applied:** wrapped both Phase 4 checks in a 3-attempt retry
-(`auth_check_curl`, 3s apart) that only retries on a bare `000` — any real
-HTTP status (including a correct `401`/`403`, or an unexpected one) still
-returns on the first try, so this cannot mask a genuine auth-enforcement
-regression, only paper over a dropped connection. See the run log
-referenced in the parent repo's results doc for the post-fix pass rate.
+**Fix applied (defensive, Phase 4 only):** wrapped the two Phase 4 checks
+in a 3-attempt retry (`auth_check_curl`, 3s apart) that only retries on a
+literal `000` — any real HTTP status (including a correct `401`/`403`, or
+a genuinely wrong one) still returns on the first try, so this cannot mask
+a real auth-enforcement regression. Phases 1, 3, and 5 already had their
+own retry logic (health check) or implicitly tolerate one flaky request
+(rate-limit burst test counts successes vs. 429s across 16 calls) and were
+left as-is — if you see an isolated `HTTP 000`/empty body on this sandbox
+during the corporate-scenario demo too, re-run the single request before
+assuming it's a governance problem.
 
 See the diff in
 `manifests/06-verification/verify.sh`.
