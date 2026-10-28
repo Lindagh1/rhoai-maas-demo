@@ -275,7 +275,15 @@ oc get datasciencecluster default-dsc &>/dev/null && HAS_DSC=true
 if [ "$HAS_DSC" = true ]; then
     MAAS_STATE=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.kserve.modelsAsService.managementState}' 2>/dev/null || echo "")
     MAAS_STATE_35=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.aigateway.modelsAsAService.managementState}' 2>/dev/null || echo "")
-    [ "$MAAS_STATE" = "Managed" ] || [ "$MAAS_STATE_35" = "Managed" ] && HAS_MAAS_MANAGED=true
+    # The aigateway *parent* component also needs managementState: Managed -
+    # checking only the nested modelsAsAService field is not sufficient: some
+    # sandboxes ship a DSC with modelsAsAService: Managed but the parent
+    # aigateway: Removed (e.g. a pre-provisioned catalog default), which
+    # leaves AIGatewayReady=False and no maas-api/CRDs ever appear even
+    # though this nested check alone would say "already Managed". See
+    # PATCHES.md.
+    AIGATEWAY_PARENT_STATE_35=$(oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.aigateway.managementState}' 2>/dev/null || echo "")
+    [ "$MAAS_STATE" = "Managed" ] || { [ "$MAAS_STATE_35" = "Managed" ] && [ "$AIGATEWAY_PARENT_STATE_35" = "Managed" ]; } && HAS_MAAS_MANAGED=true
 fi
 oc get deployment postgres -n "$NAMESPACE" &>/dev/null && HAS_POSTGRES=true
 oc get deployment maas-api -n "$MAAS_API_NS" &>/dev/null && HAS_MAAS_API=true
@@ -853,7 +861,7 @@ if should_run 4; then
     log_phase 4 "RHOAI Configuration"
 
     if [ "$HAS_MAAS_MANAGED" = true ] && \
-       { [ "$IS_35_PLUS" = false ] || [ "$MAAS_STATE_35" = "Managed" ]; }; then
+       { [ "$IS_35_PLUS" = false ] || { [ "$MAAS_STATE_35" = "Managed" ] && [ "$AIGATEWAY_PARENT_STATE_35" = "Managed" ]; }; }; then
         log_info "DSC already has MaaS: Managed, skipping"
     else
         log_step "Applying DSC and DSCI..."
