@@ -1,0 +1,918 @@
+= Post-Upgrade Troubleshooting (3.4 -> 3.5)
+
+This page covers known issues and workarounds for customers who upgraded {rhoai} from 3.4 to 3.5 with {maas} enabled. All issues listed here have been reproduced and validated on test clusters.
+
+IMPORTANT: This guide is not a replacement for the official {rhoai} link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/release_notes/known-issues_relnotes[3.5 Release Notes - Known Issues]. Always check the release notes for the latest updates.
+
+TIP: For step-by-step migration instructions, see xref:12-platform-upgrade.adoc[Platform Upgrade (3.4 -> 3.5)]. This page covers troubleshooting for issues that occur during or after the migration.
+
+== What Changes in the 3.4 -> 3.5 Upgrade
+
+The 3.5 release introduces several structural changes to the {maas} platform:
+
+[cols="1,2", options="header"]
+|===
+| Area | Change
+
+| *DSC field*
+| `kserve.modelsAsService` is frozen (CEL: `self == oldSelf`). New path is `aigateway.modelsAsAService`. Both coexist through 3.6.
+
+| *maas-api namespace*
+| Moves from `redhat-ods-applications` to `redhat-ai-gateway-infra`. The controller auto-copies the `maas-db-config` secret with FQDN conversion.
+
+| *DSC status condition*
+| `ModelsAsServiceReady` (3.4) becomes `ModelsAsAServiceReady` (3.5). The old condition is removed after upgrade.
+
+| *New component*
+| MCP Lifecycle Operator is added to the DSC. It watches all ConfigMaps and Secrets cluster-wide.
+
+| *New CRDs*
+| `aitenants.maas.opendatahub.io`, `configs.maas.opendatahub.io`, `maastenantconfigs.maas.opendatahub.io`.
+
+| *ExternalModel API*
+| Moves from `maas.opendatahub.io/v1alpha1` to `inference.opendatahub.io/v1alpha1` as `ExternalProvider`. Old resources are not auto-migrated.
+
+| *OdhDashboardConfig*
+| The `maasAuthPolicies` flag is removed. The 3.5 webhook rejects it if present.
+
+| *Tenant CR*
+| `Tenant` is deprecated. Replaced by `MaasTenantConfig`. Legacy values are preserved during AITenant bootstrap.
+
+| *DSC component rename*
+| `llamastackoperator` is renamed to `ogx`. If upgrading from 3.4, update the DSC spec or the Playground section will not appear.
+|===
+
+[[issue-1]]
+== Issue 1: MCP Lifecycle Operator OOMKill
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-82694[RHOAIENG-82694^]
+
+The MCP Lifecycle Operator is new in 3.5. It watches all ConfigMaps and Secrets cluster-wide using full structured informers, loading complete object data into the operator's in-memory cache. On clusters with many namespaces and secrets, memory consumption grows proportionally and exceeds the default limit, causing the operator pod to enter CrashLoopBackOff with OOMKilled.
+
+This blocks the DataScienceCluster from reaching `Ready` state, which breaks all downstream features: Model Catalog, {maas}, API Keys.
+
+=== Symptoms
+
+* DSC status: `"Some modules are not ready: mcplifecycleoperator"`
+* `mcp-lifecycle-operator-controller-manager` pod in CrashLoopBackOff
+* All {maas} dashboard pages show errors
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check DSC status
+oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")]}'
+
+# Check MCP lifecycle operator pod
+oc get pods -n redhat-ods-applications | grep mcp-lifecycle
+
+# Check for OOMKilled events (get the pod name from the previous command)
+oc describe pod -n redhat-ods-applications \
+  $(oc get pods -n redhat-ods-applications -o name | grep mcp-lifecycle) | grep -A5 "Last State"
+----
+
+=== Workaround
+
+Set the MCP Lifecycle Operator management state to `Removed` in the DSC:
+
+[source,bash]
+----
+oc patch datasciencecluster default-dsc --type=merge \
+  -p '{"spec":{"components":{"mcplifecycleoperator":{"managementState":"Removed"}}}}'
+----
+
+Wait for the DSC to reconcile:
+
+[source,bash]
+----
+oc wait datasciencecluster default-dsc --for=condition=Ready --timeout=300s
+----
+
+NOTE: Setting the MCP Lifecycle Operator to `Removed` disables the Model Context Protocol server management feature. If you need MCP server support, contact Red Hat support for guidance on increasing the operator's memory limits.
+
+[[issue-2]]
+== Issue 2: ExternalModel Migration - Secret Names with Dots
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-89784[RHOAIENG-89784^]
+
+In 3.5, the ExternalModel API moved from `maas.opendatahub.io/v1alpha1` to `inference.opendatahub.io/v1alpha1` as `ExternalProvider`. The new CRD introduces a stricter validation regex on `spec.auth.secretRef.name`:
+
+----
+^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$
+----
+
+Dots in secret names (which are valid Kubernetes names) now fail this validation. If you have an ExternalModel referencing a secret like `glm5.1-w8a8-key`, the migration to ExternalProvider will fail silently.
+
+Additionally, old ExternalModel resources under `maas.opendatahub.io` are **not auto-migrated** to the new `inference.opendatahub.io` ExternalProvider CRD. You need to recreate them manually.
+
+=== Symptoms
+
+* ExternalModel resource exists under `maas.opendatahub.io` but has no status
+* No corresponding ExternalProvider exists under `inference.opendatahub.io`
+* External models do not appear in the dashboard
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check old ExternalModels (3.4 API group)
+oc get externalmodel.maas.opendatahub.io -A
+
+# Check new ExternalProviders (3.5 API group)
+oc get externalprovider.inference.opendatahub.io -A
+
+# Look for secrets with dots in the name (exclude Helm and service-account tokens)
+oc get secrets -A -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name' --no-headers \
+  | awk '$2 ~ /\./ && $2 !~ /^sh\.helm/ && $2 !~ /dockercfg/ {print}'
+----
+
+=== Workaround
+
+For each ExternalModel with a dotted secret name:
+
+[source,bash]
+----
+# 1. Create a replacement secret without dots
+oc create secret generic glm51-w8a8-key -n <model-ns> \
+  --from-literal=api-key=<same-api-key-value>
+
+# 2. Delete the old secret
+oc delete secret glm5.1-w8a8-key -n <model-ns>
+
+# 3. Create the new ExternalProvider (inference.opendatahub.io)
+cat <<EOF | oc apply -f -
+apiVersion: inference.opendatahub.io/v1alpha1
+kind: ExternalProvider
+metadata:
+  name: glm51-w8a8
+  namespace: <model-ns>
+spec:
+  endpoint: "your-provider-endpoint.com"
+  provider: "openai"  # or anthropic, azure-openai, bedrock-openai
+  auth:
+    type: apikey
+    secretRef:
+      name: glm51-w8a8-key
+EOF
+
+# 4. Delete the old ExternalModel
+oc delete externalmodel.maas.opendatahub.io <name> -n <model-ns>
+
+# 5. Verify the new ExternalProvider is Ready
+oc get externalprovider -n <model-ns>
+----
+
+For ExternalModels without dots in the secret name, the same manual recreation is still needed - just skip the secret rename step.
+
+[[issue-3]]
+== Issue 3: MaaS Gateway Namespace Label
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-83207[RHOAIENG-83207^]
+
+When the {maas} gateway is configured with label-based namespace selection (the secure configuration), the namespaces that host HTTPRoutes need to carry the matching label. The exact label depends on your gateway configuration - the setup-maas guide uses `maas.opendatahub.io/gateway-access=true`, while the release notes reference `maas-gateway-access=true`. Without the correct label, the gateway rejects the internal HTTPRoute that serves the {maas} API, and the dashboard shows "Error loading components".
+
+This only applies when the gateway uses `allowedRoutes.namespaces.from: Selector`. If your gateway uses `from: All` (the default insecure configuration), this issue does not affect you. After upgrading to 3.5, if the gateway was reconfigured to use label-based selection (per link:https://redhat.atlassian.net/browse/RHOAIENG-80360[RHOAIENG-80360^] security hardening), the missing label will break {maas}.
+
+=== Symptoms
+
+* API Keys page shows "Error loading components"
+* Model Catalog page shows "{maas} could not be loaded"
+* HTTPRoutes in `redhat-ods-applications` show `NotAccepted` status
+
+=== Diagnosis
+
+[source,bash]
+----
+# First, check what label your gateway expects
+oc get gateway maas-default-gateway -n openshift-ingress \
+  -o jsonpath='{.spec.listeners[0].allowedRoutes.namespaces}'
+
+# Then check if the required label exists on the namespaces
+oc get namespace redhat-ods-applications --show-labels | grep -i maas
+oc get namespace redhat-ai-gateway-infra --show-labels | grep -i maas
+
+# Check HTTPRoute status
+oc get httproute -n redhat-ods-applications -o wide
+oc get httproute -n redhat-ai-gateway-infra -o wide
+----
+
+=== Workaround
+
+Apply the label that your gateway selector expects. Check the `matchLabels` from the diagnosis step above, then apply it:
+
+[source,bash]
+----
+# If your gateway uses maas.opendatahub.io/gateway-access (setup-maas guide default):
+oc label namespace redhat-ods-applications maas.opendatahub.io/gateway-access=true
+oc label namespace redhat-ai-gateway-infra maas.opendatahub.io/gateway-access=true
+
+# If your gateway uses maas-gateway-access (release notes workaround):
+# oc label namespace redhat-ods-applications maas-gateway-access=true
+# oc label namespace redhat-ai-gateway-infra maas-gateway-access=true
+----
+
+Wait a few seconds for the HTTPRoute to be accepted, then reload the dashboard.
+
+[[issue-4]]
+== Issue 4: Gateway Hostname Discovery (ClusterIP + Route Topology)
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-89775[RHOAIENG-89775^]
+
+When the {maas} gateway is deployed without a cloud load balancer (common on on-premise, bare-metal, or any cluster using ClusterIP + Route topology), the maas-api `/v1/tenants` endpoint returns HTTP 500 with `"Failed to resolve gateway"`. This happens because:
+
+1. `extractGatewayMetadata()` in maas-api first tries `spec.listeners[].hostname` on the Gateway - but only for listeners with `attachedRoutes > 0`. If the hostname is not set in the spec, or routes are not yet attached after upgrade, this returns empty.
+2. It then falls back to `status.addresses` - which is either empty (no LoadBalancer) or contains the internal `.svc.cluster.local` address.
+3. There is no fallback to discover the OpenShift Route hostname.
+
+This breaks the {maas} dashboard because maas-ui calls `/v1/tenants` at startup to auto-detect the gateway hostname (new in 3.5). In 3.4 the hostname was hardcoded, so this code path was never exercised.
+
+=== Symptoms
+
+* Dashboard shows "Error loading API keys" or "Error loading components"
+* maas-api logs show: `Failed to extract gateway metadata - could not determine external hostname from gateway`
+* Gateway condition shows `Programmed: False` with reason `AddressNotAssigned`
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check if spec.listeners have an explicit hostname
+oc get gateway maas-default-gateway -n openshift-ingress \
+  -o jsonpath='{.spec.listeners[*].hostname}'
+
+# Check what address the gateway reports
+oc get gateway maas-default-gateway -n openshift-ingress \
+  -o jsonpath='{.status.addresses[*]}'
+
+# Check attachedRoutes count (must be > 0 for hostname discovery to work)
+oc get gateway maas-default-gateway -n openshift-ingress \
+  -o jsonpath='{range .status.listeners[*]}{.name}: attachedRoutes={.attachedRoutes}{"\n"}{end}'
+
+# Check maas-api logs for the error
+oc logs deploy/maas-api -n redhat-ai-gateway-infra | grep -i "hostname\|external\|gateway metadata"
+----
+
+If `spec.listeners[].hostname` is empty and `status.addresses` is empty or shows a `.svc.cluster.local` address, this issue is confirmed.
+
+=== Workaround
+
+Set the hostname explicitly on the Gateway listeners. This workaround is confirmed for passthrough routes. For re-encrypt routes, additional adjustments may be needed - check the link:https://redhat.atlassian.net/browse/RHOAIENG-89775[Jira ticket^] comments for the latest guidance.
+
+NOTE: The {maas} team recommends re-encrypt routes over passthrough when using cluster wildcard default domain certs, to avoid HTTP coalescing issues.
+
+Replace `<cluster-domain>` with your cluster's apps domain:
+
+[source,bash]
+----
+CLUSTER_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
+
+oc patch gateway maas-default-gateway -n openshift-ingress --type=json \
+  -p "[
+    {\"op\": \"add\", \"path\": \"/spec/listeners/0/hostname\", \"value\": \"maas.${CLUSTER_DOMAIN}\"},
+    {\"op\": \"add\", \"path\": \"/spec/listeners/1/hostname\", \"value\": \"maas.${CLUSTER_DOMAIN}\"}
+  ]"
+
+# Restart maas-api to pick up the new hostname
+oc rollout restart deploy/maas-api -n redhat-ai-gateway-infra
+oc rollout status deploy/maas-api -n redhat-ai-gateway-infra --timeout=60s
+----
+
+After the restart, verify the fix:
+
+[source,bash]
+----
+TOKEN=$(oc whoami -t)
+MAAS_URL="https://maas.${CLUSTER_DOMAIN}"
+curl -sk -w "\nHTTP: %{http_code}\n" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  "${MAAS_URL}/maas-api/v1/tenants"
+----
+
+You should see HTTP 200 with the correct `externalUrl` in the response.
+
+[[issue-5]]
+== Issue 5: Payload-Processing OOMKill
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-88898[RHOAIENG-88898^] +
+*Target fix:* RHOAI 3.5.1
+
+The payload-processing pods in `openshift-ingress` have a hardcoded memory limit of 256Mi. Under load or with large payloads, they get OOMKilled. Manual `oc set resources` patches are reverted within seconds by the maas-controller SSA reconciliation loop.
+
+=== Symptoms
+
+* `payload-processing` pod in CrashLoopBackOff with OOMKilled
+* Inference requests fail intermittently
+* Manual resource patches are reverted
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check current limits
+oc get deployment payload-processing -n openshift-ingress \
+  -o jsonpath='{.spec.template.spec.containers[0].resources}'
+
+# Check for OOMKilled restarts
+oc describe pod -n openshift-ingress -l app=payload-processing | grep -A3 "Last State"
+----
+
+=== Workaround
+
+First, annotate the deployment to prevent the controller from reverting your changes, then increase the memory limit:
+
+[source,bash]
+----
+# Prevent SSA reconciliation
+oc annotate deployment payload-processing -n openshift-ingress \
+  opendatahub.io/managed=false
+
+# Increase memory limit
+oc set resources deployment payload-processing -n openshift-ingress \
+  --limits=memory=1Gi --requests=memory=256Mi
+----
+
+Wait for the rollout to complete:
+
+[source,bash]
+----
+oc rollout status deployment payload-processing -n openshift-ingress --timeout=60s
+----
+
+IMPORTANT: Remove the `opendatahub.io/managed=false` annotation before any future {rhoai} upgrades so the controller can manage the deployment again.
+
+[[issue-6]]
+== Issue 6: RHCL 1.4.x Rate Limiting and Gateway OOM
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-76586[RHOAIENG-76586^]
+
+Red Hat Connectivity Link (RHCL) 1.4.x changed how the WASM plugin is injected into the gateway. This breaks rate limiting silently - counters that use `auth.identity.user.username` fail because the identity data is not passed into the WASM plugin context. Additionally, the RHCL 1.4 WASM plugin requires more memory to compile, which can cause gateway pods to OOMKill at the default 1Gi limit.
+
+=== Symptoms
+
+* Rate limiting stops working - requests are never throttled even when limits are exceeded
+* Gateway pod OOMKilled at 1Gi memory limit (RHCL 1.4 WASM requires more memory)
+* `TokenRateLimitPolicy` shows `Enforced` but limits have no effect
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check RHCL version
+oc get csv -A | grep rhcl-operator | head -1
+
+# Check gateway memory limits (deployment name = <gateway-name>-<gatewayclass-name>)
+GATEWAY_DEPLOY=$(oc get deployments -n openshift-ingress -o name \
+  | grep maas-default-gateway | head -1)
+oc get "${GATEWAY_DEPLOY}" -n openshift-ingress \
+  -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'
+----
+
+=== Workaround
+
+NOTE: Downgrading RHCL is probably not the way out of this. 1.3.x does not appear in the configurations matrix for {rhoai} 3.4 and 3.5 (see xref:01-prerequisites.adoc#_version_notes[Version Notes]), so the workarounds below are the better starting point.
+
+If you are on RHCL 1.4.x, apply both workarounds from the link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/release_notes/known-issues_relnotes#RHOAIENG-76586_relnotes[release notes]:
+
+**1. Disconnect the Gateway from operator management and increase memory to 2Gi:**
+
+[source,bash]
+----
+GATEWAY_NAME="maas-default-gateway"
+
+# Prevent operator from reverting gateway changes
+oc annotate gateway ${GATEWAY_NAME} -n openshift-ingress \
+  opendatahub.io/managed=false
+
+oc apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${GATEWAY_NAME}-proxy-config
+  namespace: openshift-ingress
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: istio-proxy
+              resources:
+                limits:
+                    memory: 2Gi
+EOF
+
+oc patch gateway ${GATEWAY_NAME} -n openshift-ingress --type=merge \
+  -p "{\"spec\":{\"infrastructure\":{\"parametersRef\":{\"group\":\"\",\"kind\":\"ConfigMap\",\"name\":\"${GATEWAY_NAME}-proxy-config\"}}}}"
+----
+
+**2. Add identity filter to AuthPolicy:**
+
+Add a `response.success.filters.identity` section to your AuthPolicy so that Authorino writes the user identity into the WASM plugin context. Without this, rate limit counters that use `auth.identity.user.username` fail silently. See the full AuthPolicy patch in the link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/release_notes/known-issues_relnotes#RHOAIENG-76586_relnotes[release notes].
+
+IMPORTANT: Remove the `opendatahub.io/managed=false` annotation from the Gateway before any future {rhoai} upgrades so the controller can manage it again.
+
+[[issue-7]]
+== Issue 7: WASM Auth Timeout Under Load
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-71638[RHOAIENG-71638^]
+
+RHCL configures the Kuadrant WASM plugin with a default 200ms Authorino authentication service timeout. Under high concurrent request load, Authorino authentication latency can exceed this threshold due to cache misses. The WASM plugin uses `failureMode: deny`, so timed-out authentication requests result in HTTP 500 or 503 responses even when model backends are healthy.
+
+This affects both {rhoai} 3.4 and 3.5.
+
+=== Symptoms
+
+* HTTP 500 or 503 on inference requests under concurrent load
+* Model pods are healthy with no errors in their logs
+* Gateway Envoy logs show WASM auth timeout errors
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check for 500/503 errors in gateway logs
+oc logs -n openshift-ingress -l gateway.istio.io/managed=istio.io-gateway-controller \
+  -c istio-proxy --tail=100 | grep -E "50[03]"
+
+# Check current AUTH_SERVICE_TIMEOUT
+oc get subscription -n openshift-operators rhcl-operator \
+  -o yaml | grep -A5 AUTH_SERVICE_TIMEOUT
+----
+
+=== Workaround
+
+Set `AUTH_SERVICE_TIMEOUT` to `10s` on the RHCL operator Subscription:
+
+[source,bash]
+----
+RHCL_NAMESPACE=openshift-operators
+RHCL_SUBSCRIPTION=rhcl-operator
+
+oc patch subscription "${RHCL_SUBSCRIPTION}" -n "${RHCL_NAMESPACE}" \
+  --type=merge \
+  -p '{"spec":{"config":{"env":[{"name":"AUTH_SERVICE_TIMEOUT","value":"10s"}]}}}'
+----
+
+WARNING: The merge patch replaces the entire `spec.config.env` array. If your subscription already has other env vars, edit the subscription manually (`oc edit subscription`) and add the entry to the existing list instead.
+
+Wait for the operator to roll out:
+
+[source,bash]
+----
+oc wait --for=jsonpath='{.status.state}'=AtLatestKnown \
+  subscription/${RHCL_SUBSCRIPTION} -n ${RHCL_NAMESPACE} --timeout=300s
+oc wait --for=condition=Available --timeout=120s \
+  deployment/kuadrant-operator-controller-manager -n ${RHCL_NAMESPACE}
+----
+
+[[issue-8]]
+== Issue 8: Envoy ext_proc Body Corruption
+
+*Jira:* link:https://redhat.atlassian.net/browse/OSSM-15498[OSSM-15498^] +
+*Priority:* Blocker +
+*Status:* In progress
+
+When two or more ext_proc filters are chained on the same Envoy listener, body data can be corrupted or truncated. The upstream fix landed in Envoy 1.37.1+, but has not been backported to the 1.36.x or 1.35.x branches used by OSSM 3.x.
+
+The AI Gateway data plane requires chained ext_proc stages (pre-processing + main processing via Praxis). Until this is fixed, model-level subscription enforcement through the data plane may be bypassed.
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check Envoy version
+GATEWAY_POD=$(oc get pods -n openshift-ingress \
+  -l gateway.istio.io/managed=istio.io-gateway-controller \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+oc exec "$GATEWAY_POD" -n openshift-ingress -c istio-proxy -- envoy --version
+----
+
+If the version is below 1.37.1, the fix is not available.
+
+=== Status
+
+No workaround exists. This is being tracked as a blocker for RHOAI 3.5 Z-stream and 3.6 GA. The fix depends on an OSSM update that includes the upstream Envoy patch.
+
+[[issue-9]]
+== Issue 9: Token Rate Limiting (429 Too Many Requests)
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-89785[RHOAIENG-89785^]
+
+The default `tokenRateLimits` in a MaaSSubscription is 1000 tokens per hour. This is easily exhausted with even a single chat conversation. When the limit is hit, all subsequent requests return HTTP 429 `Too Many Requests` - even though the model backend is healthy and has capacity.
+
+The 429s come from Kuadrant's `TokenRateLimitPolicy`, not from the model itself. Every 429 response has a tiny 18-byte body and 15-30ms latency - far too fast to be an actual LLM response.
+
+This affects both {rhoai} 3.4 and 3.5.
+
+=== Symptoms
+
+* Playground shows `[server_error] Too Many Requests`
+* Gateway access logs show HTTP 429 on `/v1/chat/completions`
+* Model pod is healthy with no errors in its logs
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check the current token rate limit
+oc get maassubscription -A -o yaml | grep -A5 tokenRateLimits
+
+# Check the generated TokenRateLimitPolicy
+oc get tokenratelimitpolicy -A -o yaml | grep -A5 "limit:"
+
+# Confirm 429s in gateway logs
+oc logs -n openshift-ingress -l gateway.istio.io/managed=istio.io-gateway-controller \
+  -c istio-proxy --tail=100 | grep "429"
+----
+
+=== Workaround
+
+Increase the token limit in your MaaSSubscription. Edit the subscription directly:
+
+[source,bash]
+----
+# List subscriptions
+oc get maassubscription -A
+
+# Edit the subscription and increase tokenRateLimits[].limit
+oc edit maassubscription <name> -n <namespace>
+----
+
+Change the `tokenRateLimits` section:
+
+[source,yaml]
+----
+spec:
+  modelRefs:
+  - name: <model-name>
+    namespace: <model-ns>
+    tokenRateLimits:
+    - limit: 100000   # was 1000
+      window: 1h
+----
+
+Wait for the `TokenRateLimitPolicy` to reconcile:
+
+[source,bash]
+----
+oc get tokenratelimitpolicy -A -o yaml | grep -A5 "limit:"
+----
+
+NOTE: Do not edit the `TokenRateLimitPolicy` directly - the maas-controller will overwrite it. Always edit the `MaaSSubscription` source.
+
+[[issue-10]]
+== Issue 10: Duplicate AI Playground Endpoints (LlamaStackDistribution)
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-89786[RHOAIENG-89786^]
+
+After upgrading to 3.5 and enabling the `ogx` component in the DSC, the AI Playground may show two provider endpoints for the same model. The MaaS-routed endpoint (`maas-vllm-inference-1/publishers/...`) works, but the default endpoint (`vllm-inference-2/...`) talks directly to the KServe pod and bypasses MaaS auth - failing with connection errors or model-not-found errors depending on timing.
+
+The root cause is a leftover `LlamaStackDistribution` CR in the model namespace. Deleting it removes the duplicate provider.
+
+=== Symptoms
+
+* Playground shows two AI asset endpoints for the same model
+* One endpoint works (MaaS), the other fails with "Server error" or "model does not exist"
+* Intermittent failures when Playground picks the wrong provider
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check for LlamaStackDistribution in model namespaces
+oc get llamastackdistribution -A
+
+# Check providers visible to the playground
+oc logs -n <model-ns> -l app=lsd-genai-playground --tail=50 | grep provider
+----
+
+=== Workaround
+
+Delete the LlamaStackDistribution from the model namespace:
+
+[source,bash]
+----
+oc delete llamastackdistribution -n <model-ns> --all
+----
+
+Then recreate the playground to pick up only the MaaS provider:
+
+[source,bash]
+----
+# Delete the old playground pod
+oc delete pod -n <model-ns> -l app=lsd-genai-playground
+
+# Or recreate the playground from the dashboard:
+# Add to playground -> select only the model with publishers/ prefix -> Create
+----
+
+[[issue-11]]
+== Issue 11: OTEL Collector Proxy Interception (Observability Metrics Showing 0)
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-91640[RHOAIENG-91640^]
+
+On clusters behind a corporate HTTP proxy, the RHOAI observability pipeline breaks silently after upgrade. The OTEL collector pods (`data-science-collector-collector-*`) and TargetAllocator (`data-science-collector-targetallocator`) in `redhat-ods-monitoring` inherit the cluster-wide `HTTP_PROXY`/`HTTPS_PROXY` env vars. When the collector tries to reach the TargetAllocator to discover scrape targets, the request goes through the proxy. The proxy returns an HTML page (authentication or redirect), which the collector fails to parse as JSON. With no scrape targets, no metrics reach the RHOAI Prometheus instance, and the MaaS usage dashboard shows 0 for all metrics.
+
+The collector config uses a short hostname to reach the TargetAllocator (`http://data-science-collector-targetallocator:80`). This short hostname has no dots and no `.svc` suffix, so it does not match the `NO_PROXY` entries (`.svc`, `.cluster.local`). Go's `net/http` proxy resolution checks the original hostname against `NO_PROXY` before DNS resolution, so the request gets routed through the corporate proxy.
+
+This does not affect clusters without an HTTP proxy.
+
+=== Symptoms
+
+* MaaS usage dashboard shows 0 for all token metrics
+* OTEL collector logs: `"Failed to retrieve the job list"` with `"unexpected key name <!DOCTYPE html..."`
+* RHOAI Thanos Querier returns "Empty query result" for all metrics (including `authorized_calls_total`, `vllm:num_requests_running`)
+* Limitador metrics are correct when queried directly inside the pod
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check if the cluster uses a proxy
+oc get proxy/cluster -o jsonpath='{.spec.httpProxy}'
+
+# Check OTEL collector logs for HTML parse errors
+oc logs -n redhat-ods-monitoring data-science-collector-collector-0 \
+  | grep -i "Failed to retrieve"
+
+# Check if TargetAllocator has proxy env vars
+oc get deploy data-science-collector-targetallocator -n redhat-ods-monitoring \
+  -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' | tr ' ' '\n' | grep -i proxy
+
+# Verify TargetAllocator returns JSON (not HTML) when accessed directly
+oc exec -n redhat-ods-monitoring data-science-collector-collector-0 -- \
+  curl -s http://data-science-collector-targetallocator:8080/jobs | head -1
+----
+
+If the last command returns HTML (`<!DOCTYPE html...`) instead of JSON, this issue is confirmed.
+
+=== Workaround
+
+Patch the `OpenTelemetryCollector` CR to override the proxy env vars to empty on both the collector and TargetAllocator:
+
+[source,bash]
+----
+oc patch opentelemetrycollector data-science-collector -n redhat-ods-monitoring --type=merge -p '{
+  "spec": {
+    "env": [
+      {"name": "HTTP_PROXY", "value": ""},
+      {"name": "HTTPS_PROXY", "value": ""},
+      {"name": "http_proxy", "value": ""},
+      {"name": "https_proxy", "value": ""}
+    ],
+    "targetAllocator": {
+      "env": [
+        {"name": "HTTP_PROXY", "value": ""},
+        {"name": "HTTPS_PROXY", "value": ""},
+        {"name": "http_proxy", "value": ""},
+        {"name": "https_proxy", "value": ""}
+      ]
+    }
+  }
+}'
+----
+
+Wait for the pods to restart:
+
+[source,bash]
+----
+oc rollout status deployment/data-science-collector-targetallocator -n redhat-ods-monitoring --timeout=60s
+oc rollout status statefulset/data-science-collector-collector -n redhat-ods-monitoring --timeout=120s
+----
+
+Verify the collector discovers scrape jobs:
+
+[source,bash]
+----
+oc logs -n redhat-ods-monitoring data-science-collector-collector-0 --tail=20 | grep "Scrape job added"
+----
+
+You should see scrape jobs listed (e.g., `serviceMonitor/redhat-ods-monitoring/limitador-metrics/0`).
+
+IMPORTANT: Do NOT use `oc set env statefulset/...` or `oc set env deployment/...` directly. The OTel operator reconciles the StatefulSet and Deployment from the CR spec, so manual env changes get reverted immediately. You must patch the `OpenTelemetryCollector` CR itself.
+
+WARNING: The RHOAI operator manages the `OpenTelemetryCollector` CR and may revert changes on reconciliation. If that happens, annotate the CR to prevent operator management: `oc annotate opentelemetrycollector data-science-collector -n redhat-ods-monitoring opendatahub.io/managed=false`. Remove this annotation before any future {rhoai} upgrades.
+
+[[issue-12]]
+== Issue 12: HTTPRoute Rule Name Collision (Multi-Model Gateway)
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-93709[RHOAIENG-93709^] +
+*Status:* New
+
+In {rhoai} 3.5, the `v3-5-0-kserve-config-llm-router-route` LLMInferenceServiceConfig preset introduces 12 hardcoded `HTTPRoute.spec.rules[].name` entries (e.g., `chat-completions`, `completions`, `models`). When multiple LLMInferenceServices are attached to the same MaaS Gateway, Istio merges all their HTTPRoutes into a single Virtual Host. Because the rule names are identical across services, Envoy treats them as duplicates - one service's Endpoint Picker (EPP) configuration overwrites the other's, causing all traffic to be routed to a single EPP regardless of which model was requested.
+
+This is a regression from {rhoai} 3.4 where the `name` field was omitted in the preset, allowing Istio to auto-generate unique rule names per service. Related upstream issues: link:https://github.com/istio/istio/issues/58392[istio#58392^], link:https://github.com/istio/istio/issues/61594[istio#61594^].
+
+=== Symptoms
+
+* Inference requests to a second model return responses from the first model (or vice versa)
+* Only one EPP pod receives traffic even though multiple models are deployed
+* Prefix caching and KV cache-aware routing break because requests land on the wrong EPP
+
+=== Diagnosis
+
+[source,bash]
+----
+# List all HTTPRoutes attached to the MaaS gateway
+oc get httproute -A -o json | jq -r '
+  .items[]
+  | select(.spec.parentRefs[]? | .name == "maas-default-gateway")
+  | "\(.metadata.namespace)/\(.metadata.name)"'
+
+# Check for duplicate rule names across HTTPRoutes
+oc get httproute -A -o json | jq -r '
+  [.items[]
+   | select(.spec.parentRefs[]? | .name == "maas-default-gateway")
+   | .spec.rules[]? | .name // empty]
+  | group_by(.) | map(select(length > 1) | {name: .[0], count: length})
+  | .[]'
+----
+
+If the second command returns results, you have duplicate rule names causing route shadowing.
+
+=== Status
+
+No workaround exists. The upstream fix is tracked in link:https://github.com/istio/istio/pull/61601[istio#61601^], which resolves InferencePool endpoint pickers per backendRef instead of per rule name. The LLMInferenceService routing may also add suffixes to sectionNames to avoid collisions at the HTTPRoute level.
+
+[[issue-13]]
+== Issue 13: Stale DNSRecord After Gateway Service Type Change
+
+*Jira:* link:https://redhat.atlassian.net/browse/RHOAIENG-93962[RHOAIENG-93962^]
+
+When a {maas} gateway is initially deployed with a LoadBalancer service type and then switched to ClusterIP (via ConfigMap `parametersRef`), the DNS operator does not clean up the `dnsrecord` object created for the original LoadBalancer. The stale record has a CNAME pointing to a defunct AWS ELB hostname, which breaks DNS resolution for the gateway hostname from both inside and outside the cluster.
+
+The root cause is that the `dnsrecord` is owned by the Service via `ownerReferences`. When the service type changes from LoadBalancer to ClusterIP, the service is patched in place - not deleted and recreated - so the ownerReference stays valid and Kubernetes garbage collection does not remove the `dnsrecord`. The DNS operator does not watch for service type changes.
+
+=== Symptoms
+
+* Dashboard shows "Error loading API keys" with `dial tcp: lookup maas.apps.<cluster> on 172.30.0.10:53: no such host`
+* The {maas} URL resolves from outside the cluster but not from inside (or fails from both sides depending on timing)
+* Gateway and Route are correctly configured, service is ClusterIP with no external IP
+
+=== Diagnosis
+
+[source,bash]
+----
+# Check for stale dnsrecord objects in openshift-ingress
+oc get dnsrecord -n openshift-ingress
+
+# If a dnsrecord exists, check its target
+oc get dnsrecord -n openshift-ingress -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.dnsName} -> {.spec.targets}{"\n"}{end}'
+
+# Check the gateway service type
+oc get svc -n openshift-ingress -l gateway.networking.k8s.io/gateway-name=maas-default-gateway \
+  -o jsonpath='{.items[0].spec.type}'
+
+# Verify the ELB target is dead
+nslookup $(oc get dnsrecord -n openshift-ingress -o jsonpath='{.items[0].spec.targets[0]}')
+----
+
+If the service type is ClusterIP but a `dnsrecord` exists with a CNAME target that returns NXDOMAIN, this issue is confirmed.
+
+=== Workaround
+
+Delete the stale `dnsrecord`:
+
+[source,bash]
+----
+oc delete dnsrecord -n openshift-ingress \
+  $(oc get dnsrecord -n openshift-ingress -o name)
+----
+
+After deletion, internal DNS resolves immediately via the wildcard `*.apps.*` record (pointing to the OpenShift Router). External DNS may take longer due to negative caching of the stale CNAME.
+
+NOTE: This only affects clusters where the gateway service type was changed from LoadBalancer to ClusterIP. Fresh ClusterIP deployments (where LoadBalancer was never used) are not affected.
+
+[[issue-14]]
+== Issue 14: LlamaStackOperator/OGX Conflict Blocks the Entire AIGateway Module
+
+Reproduced live on a RHOAI 3.5.0 cluster (`stable-3.x` channel) during a fresh {maas} install: `aigateway.modelsAsAService` showed `Managed` in the DSC spec, but `maas-api` never deployed, `ModelsAsAServiceReady` stayed `False`, and applying `MaaSModelRef` failed with `no matches for kind "MaaSModelRef" in version "maas.opendatahub.io/v1alpha1"` - even though the health check, gateway, and PostgreSQL all looked fine. `setup-maas.sh` timed out waiting 300s for the `maas-api` deployment to appear.
+
+The root cause has nothing to do with {maas} itself: the DSC also had `llamastackoperator.managementState: Managed` (either left over from a previous state, or defaulted by the CRD schema when the field is omitted). The opendatahub-operator provisions modules in batches by runlevel, and `aigateway`, `mlflowoperator`, and `ogx` are all provisioned together at runlevel 32. Having both `llamastackoperator: Managed` and `ogx: Managed` set makes the operator reject the `ogx` module outright, which aborts that entire batch - so `aigateway`'s CRDs (`maasmodelrefs.maas.opendatahub.io`, `configs.maas.opendatahub.io`, etc.) and `mlflowoperator`'s CRD never get installed either, even though nothing in the DSC spec or status message mentions `llamastackoperator` at all.
+
+=== Symptoms
+
+* `oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")]}'` shows `"Some modules are not ready: aigateway, mlflowoperator, ogx"`
+* `AIGatewayReady` condition: `Failed to get module status: no matches for kind "AIGateway" in version "components.platform.opendatahub.io/v1alpha1"`
+* `oc get crd | grep maas.opendatahub.io` returns nothing - the MaaS CRDs were never installed
+* `maas-api` deployment does not exist in `redhat-ai-gateway-infra` (or `redhat-ods-applications` on 3.4-style layouts), even 5+ minutes after the DSC was applied
+* `oc apply -f manifests/05-maas-models/.../maas-model.yaml` (or any `MaaSModelRef`) fails with `no matches for kind "MaaSModelRef" ... ensure CRDs are installed first`
+* `rhods-operator` logs (`oc logs -n redhat-ods-operator deployment/rhods-operator`) repeat `"module CRDs not yet available, requesting requeue"` for `aigateway, mlflowoperator, ogx` in an endless loop, interleaved with an ERROR: `"BuildModuleCR failed"` / `error":"LlamaStackOperator is set to Managed; it has been deprecated, set it to Removed before enabling OGX"` and `"provisioning failed: module provisioning failed: ogx"`
+
+=== Diagnosis
+
+[source,bash]
+----
+# Confirm the DSC is not Ready and which modules are stuck
+oc get datasciencecluster default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")]}'
+
+# Check both fields - this is the smoking gun if both show Managed
+oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.llamastackoperator}{"\n"}'
+oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.ogx}{"\n"}'
+
+# Confirm via operator logs
+oc logs -n redhat-ods-operator deployment/rhods-operator --tail=500 \
+  | grep -i "LlamaStackOperator is set to Managed"
+----
+
+=== Workaround
+
+Set `llamastackoperator` to `Removed` explicitly (it is superseded by `ogx` in 3.5 and does not need to stay `Managed` for anything, including 3.4 compatibility):
+
+[source,bash]
+----
+oc patch datasciencecluster default-dsc --type=merge \
+  -p '{"spec":{"components":{"llamastackoperator":{"managementState":"Removed"}}}}'
+
+# Should flip to True within ~60-90s
+oc wait datasciencecluster default-dsc --for=condition=Ready --timeout=180s
+----
+
+Once `Ready=True`, the `aigateway`, `mlflowoperator`, and MaaS CRDs install automatically and `maas-api`/`maas-controller` deploy without any further action. Re-run the phase that timed out (for example `./scripts/setup-maas.sh --from-phase 4`) to finish deploying models and governance resources.
+
+IMPORTANT: `manifests/04-rhoai-config/datasciencecluster.yaml` in this guide now sets `llamastackoperator: Removed` explicitly alongside `ogx: Managed`, so fresh installs following xref:04-rhoai-config.adoc[Phase 4] as written should not hit this. This issue is most likely to surface on clusters where the DSC already existed (e.g. a prior 3.4 install, or a partially-completed 3.5 attempt) before `setup-maas.sh` ran - the script detects `modelsAsAService: Managed` and skips re-applying the DSC, so a pre-existing `llamastackoperator: Managed` value is never corrected. See xref:12-platform-upgrade.adoc[Step 3] for the equivalent guidance during a 3.4 -> 3.5 upgrade.
+
+== Quick Reference: Triage Order
+
+When you hit problems after upgrading from 3.4 to 3.5, check in this order:
+
+[cols="1,3,2", options="header"]
+|===
+| Step | Check | Fix
+
+| 1
+| Is DSC Ready? (`oc get dsc default-dsc -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'`)
+| If not, check for MCP Lifecycle Operator OOM (<<issue-1,Issue 1>>)
+
+| 2
+| Is the namespace labeled? (`oc get ns redhat-ods-applications --show-labels \| grep -i maas`)
+| Apply label (<<issue-3,Issue 3>>)
+
+| 3
+| Does maas-api report a hostname error? (check logs in `redhat-ai-gateway-infra`)
+| Set `spec.listeners[].hostname` on Gateway (<<issue-4,Issue 4>>)
+
+| 4
+| Are payload-processing pods OOMKilled?
+| Annotate + increase memory (<<issue-5,Issue 5>>)
+
+| 5
+| Are ExternalModels missing after upgrade?
+| Recreate as ExternalProvider (<<issue-2,Issue 2>>)
+
+| 6
+| HTTP 500/503 under load?
+| Set AUTH_SERVICE_TIMEOUT to 10s (<<issue-7,Issue 7>>)
+
+| 7
+| HTTP 429 Too Many Requests?
+| Increase tokenRateLimits in MaaSSubscription (<<issue-9,Issue 9>>)
+
+| 8
+| RHCL 1.4.x installed? (`oc get csv -n openshift-operators \| grep rhcl`)
+| Apply WasmPlugin + 2Gi gateway memory fix (<<issue-6,Issue 6>>)
+
+| 9
+| ext_proc filter_chain_not_found errors in gateway logs?
+| No workaround yet, track OSSM update (<<issue-8,Issue 8>>)
+
+| 10
+| Playground shows two endpoints for same model?
+| Delete LlamaStackDistribution (<<issue-10,Issue 10>>)
+
+| 11
+| Cluster behind HTTP proxy and observability metrics show 0? (`oc get proxy/cluster -o jsonpath='{.spec.httpProxy}'`)
+| Override proxy env vars via OpenTelemetryCollector CR (<<issue-11,Issue 11>>)
+
+| 12
+| Multiple models on same gateway and traffic goes to wrong model?
+| No workaround yet, track RHOAIENG-93709 (<<issue-12,Issue 12>>)
+
+| 13
+| Changed gateway from LoadBalancer to ClusterIP and DNS broken? (`oc get dnsrecord -n openshift-ingress`)
+| Delete stale dnsrecord (<<issue-13,Issue 13>>)
+
+| 14
+| `maas-api` never appears / `MaaSModelRef` CRD missing, but `modelsAsAService: Managed`? (`oc get datasciencecluster default-dsc -o jsonpath='{.spec.components.llamastackoperator}'`)
+| Set `llamastackoperator` to `Removed` (<<issue-14,Issue 14>>)
+|===
+
+== References
+
+* link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/release_notes/known-issues_relnotes[RHOAI 3.5 Release Notes - Known Issues]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-82694[RHOAIENG-82694 - MCP Lifecycle Operator OOM]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-83207[RHOAIENG-83207 - Gateway namespace label]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-89775[RHOAIENG-89775 - Gateway hostname discovery on ClusterIP+Route]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-88898[RHOAIENG-88898 - Payload-processing OOM]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-76586[RHOAIENG-76586 - RHCL 1.4.x rate limiting]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-71638[RHOAIENG-71638 - WASM auth timeout]
+* link:https://redhat.atlassian.net/browse/OSSM-15498[OSSM-15498 - Envoy ext_proc body corruption]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-89784[RHOAIENG-89784 - ExternalModel migration and dotted secret names]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-89785[RHOAIENG-89785 - Token rate limiting default too low]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-89786[RHOAIENG-89786 - Duplicate Playground endpoints from leftover LlamaStackDistribution]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-91640[RHOAIENG-91640 - OTEL collector proxy interception breaks observability]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-93709[RHOAIENG-93709 - HTTPRoute rule name collision in multi-model gateway]
+* link:https://redhat.atlassian.net/browse/RHOAIENG-93962[RHOAIENG-93962 - Stale DNSRecord after gateway service type change]
+* Issue 14 (LlamaStackOperator/OGX conflict) - no Jira ticket filed yet; reproduced live and documented in this guide
+* link:https://redhat.atlassian.net/browse/RHOAIENG-80360[RHOAIENG-80360 - Gateway route hijacking security fix]

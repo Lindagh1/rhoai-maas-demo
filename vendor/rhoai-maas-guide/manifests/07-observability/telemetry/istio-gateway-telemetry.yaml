@@ -1,0 +1,24 @@
+# REFERENCE ONLY - the RHOAI operator (maas-controller) auto-creates this resource
+# when spec.telemetry.enabled: true is set on MaasTenantConfig (3.5) or Tenant (3.4).
+# You do not need to apply this manually. Kept here as a reference.
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: latency-per-subscription
+  namespace: openshift-ingress
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: maas-default-gateway
+  metrics:
+  - providers:
+    - name: prometheus
+    overrides:
+    - match:
+        metric: REQUEST_DURATION
+        mode: CLIENT_AND_SERVER
+      tagOverrides:
+        subscription:
+          operation: UPSERT
+          value: request.headers["x-maas-subscription"]

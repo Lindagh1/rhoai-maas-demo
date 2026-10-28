@@ -1,0 +1,425 @@
+= Phase 5: MaaS Model Deployment
+
+This phase deploys LLM models and registers them with the MaaS platform. Each model includes the inference workload (LLMInferenceService) and the MaaS control plane resources (MaaSModelRef, MaaSAuthPolicy, MaaSSubscription) that enable API key management, access control, and rate limiting.
+
+TIP: All file paths and `oc apply` commands in this guide are relative to the link:{repo-url}[rhoai-maas-guide] repository root. Make sure you have cloned it and are working from its root directory (see xref:index.adoc#_getting_started[Getting Started]).
+
+IMPORTANT: This guide is not a replacement for the official {rhoai} {maas} documentation (link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/govern_llm_access_with_models-as-a-service/index[3.5] | link:https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.4/html/govern_llm_access_with_models-as-a-service/index[3.4]). It is a companion resource with opinionated Kustomize manifests and automation scripts to accelerate deployment.
+
+== Prerequisites
+
+* xref:01-prerequisites.adoc[Phases 1]-xref:04-rhoai-config.adoc[4] completed (RHOAI installed, MaaS platform running)
+* MaaS Gateway available in `openshift-ingress` namespace
+* `maas-api` and `maas-controller` pods running (in `redhat-ai-gateway-infra` on RHOAI 3.5+, or `redhat-ods-applications` on 3.4)
+
+IMPORTANT: GPU models use FP8 quantization, which requires NVIDIA GPUs with compute capability >= 80 (Ampere architecture or newer). T4 GPUs (compute capability 75) are *not supported* with the current vLLM version. Use A10G, L4, L40, L40S, A100, or H100 GPUs.
+
+== Available Models
+
+=== simulator (recommended for initial testing)
+
+A CPU-only mock LLM that requires no GPU. It uses the `llm-d-inference-sim` container to simulate an OpenAI-compatible inference endpoint. This is the best choice for validating the MaaS platform without GPU infrastructure.
+
+* *Runtime*: llm-d-inference-sim (CPU-only)
+* *Resources*: 100m-500m CPU, 256Mi-512Mi memory
+* *GPU*: Not required
+* *Startup time*: ~30 seconds
+
+=== granite-tiny-gpu
+
+Red Hat AI Granite 4.0-h-tiny FP8 Dynamic, a small Granite model (~1B parameters) running on the Red Hat AI Inference Server (vLLM CUDA). Suitable for clusters with modest GPU resources.
+
+* *Runtime*: vLLM CUDA (registry.redhat.io/rhaii/vllm-cuda-rhel9:3.3.0)
+* *Model weights*: OCI modelcar from registry.redhat.io
+* *Resources*: 2-4 CPU, 8Gi-24Gi memory, 1x NVIDIA GPU
+* *GPU memory*: ~8GB required
+* *Startup time*: 5-15 minutes (image pull + model loading)
+
+=== gemma
+
+Google Gemma 2 9B IT FP8 running on the Red Hat AI Inference Server (vLLM CUDA). A 9B parameter instruction-tuned model with FP8 quantization, suitable for general-purpose text generation and code tasks. Fits on a single L4 GPU (24GB VRAM).
+
+* *Runtime*: vLLM CUDA (registry.redhat.io/rhaii/vllm-cuda-rhel9:3.3.0)
+* *Model weights*: OCI modelcar `registry.redhat.io/rhelai1/modelcar-gemma-2-9b-it-fp8:1.5`
+* *Resources*: 2-4 CPU, 8Gi-24Gi memory, 1x NVIDIA GPU
+* *GPU memory*: ~12GB required (FP8 quantized)
+* *Startup time*: 5-15 minutes (image pull + model loading)
+* *Context length*: 4096 tokens (configurable via `--max-model-len`)
+
+NOTE: Gemma is a US-origin model, making it suitable for deployments with export control requirements. The OCI modelcar is available from registry.redhat.io and works in both connected and disconnected (air-gapped) environments.
+
+=== gpt-oss-20b
+
+OpenAI gpt-oss-20b running on the Red Hat AI Inference Server. Uses the link:https://huggingface.co/RedHatAI/gpt-oss-20b[Red Hat AI validated quantized build^], which fits on a single 24 GB GPU (L4) or better.
+
+* *Runtime*: vLLM CUDA (registry.redhat.io/rhaii/vllm-cuda-rhel9:3.3.0)
+* *Model weights*: OCI modelcar from registry.redhat.io (~8GB download)
+* *Resources*: 2-4 CPU, 16Gi-60Gi memory, 1x NVIDIA GPU
+* *GPU memory*: ~16GB required (quantized - verified on a 24 GB L4)
+* *Startup time*: 5-15 minutes (image pull + model loading)
+
+=== qwen3-06b
+
+Qwen3-0.6B running on the Red Hat AI Inference Server (vLLM CPU). A small but capable 0.6B parameter model that runs entirely on CPU - no GPU required. Good for clusters without GPU infrastructure that still need a real (non-simulated) LLM endpoint.
+
+* *Runtime*: vLLM CPU (registry.redhat.io/rhaiis/vllm-cpu-rhel9)
+* *Model weights*: HuggingFace `hf://Qwen/Qwen3-0.6B`
+* *Resources*: 4-8 CPU, 16Gi memory
+* *GPU*: Not required
+* *Context length*: 2048 tokens
+* *Startup time*: 2-5 minutes (HuggingFace download + CPU model loading)
+
+NOTE: This model downloads weights from HuggingFace (`hf://`), so it is subject to the same HuggingFace Xet download hang as the simulator (see <<xet-hang,HuggingFace Xet Download Hang>> below). If the pod is stuck in `Init:0/1`, apply the `HF_HUB_DISABLE_XET` workaround.
+
+=== simulator-disconnected
+
+A variant of the simulator for air-gapped clusters. Uses `oci://` storage URI instead of `hf://` because HuggingFace is unreachable in disconnected environments. Functionally identical to the connected simulator - the inference container generates random responses regardless of the model URI.
+
+* *Runtime*: llm-d-inference-sim (CPU-only)
+* *Resources*: 100m-500m CPU, 256Mi-512Mi memory
+* *GPU*: Not required
+* *Startup time*: ~30 seconds (plus OCI modelcar init pull from mirror)
+
+== Custom Resource Descriptions
+
+Each model deployment creates the following custom resources. `LLMInferenceService` is a KServe resource (`serving.kserve.io/v1alpha1`); the MaaS resources belong to `maas.opendatahub.io/v1alpha1`:
+
+=== LLMInferenceService (namespace: `llm`)
+
+Defines the inference workload: the container, model weights, resource requests, health probes, and gateway routing. This is the actual serving pod that handles inference requests.
+
+=== MaaSModelRef (namespace: `llm`)
+
+Registers the LLMInferenceService with the MaaS control plane. The MaaS API uses this reference to discover available models and route API requests to the correct inference endpoint.
+
+=== MaaSAuthPolicy (namespace: `models-as-a-service`)
+
+Defines who can access the model. The examples here grant access to all authenticated users (`system:authenticated` group). You can restrict access to specific users or groups by modifying the `subjects` field.
+
+=== MaaSSubscription (namespace: `models-as-a-service`)
+
+Defines rate-limiting tiers for model access. Each model ships with two tiers:
+
+* *Free tier* (priority 10): 100 tokens/min for all authenticated users
+* *Premium tier* (priority 20): 100,000 tokens/min for all authenticated users
+
+Higher-priority subscriptions take precedence. You can adjust limits, windows, and subject groups to match your usage policies.
+
+TIP: See the link:{repo-url}/tree/main/demo/user-level-rate-limiting[User-Level Rate Limiting demo] and link:{repo-url}/tree/main/demo/subscription-priority[Subscription Priority demo] for hands-on walkthroughs of tiering and priority resolution. All demos are listed on the xref:demos.adoc[Demos] page.
+
+[[governance-pairing]]
+=== Governance Pairing: Why Both Are Required
+
+[IMPORTANT]
+====
+A `MaaSModelRef` reaches `Ready` phase only when *both* a `MaaSSubscription` AND a `MaaSAuthPolicy` reference it. This is called *governance pairing*. If only one of them references a model, the model stays in `Pending` phase with the condition `No active subscription and auth policy pairing found`, and inference requests will fail.
+
+These two CRDs are intentionally separate - they serve different purposes (access control vs rate limiting) and can target different groups. For example, you can grant all users access via one `MaaSAuthPolicy` while having separate `MaaSSubscription` resources with different rate limits per department.
+
+However, *updating one does NOT auto-update the other*. If you add a model to a `MaaSSubscription` (via CLI or UI), you must also add it to a `MaaSAuthPolicy`. The controller does not sync them automatically.
+====
+
+NOTE: link:{attachmentsdir}/install-flow.html[*Open the Install & Configuration Visualizer*^] (opens in a new tab) to see governance pairing, tiers/priority, and the full phase sequence animated end-to-end.
+
+== Deploying a Model
+
+[NOTE]
+====
+*Gateway Pod OOMKill*
+
+Deploying a model triggers the Istio gateway to load Kuadrant Wasm extensions, which can push the pod past the default `1Gi` memory limit. If you applied the `gateway-resources.yaml` ConfigMap in xref:02-platform-config.adoc#_gateway_pod_oomkill_prevention[Phase 2 Step 5b], this is already handled (the limit is set to `2Gi` via `parametersRef`).
+
+If the gateway pod starts OOMKilling after deploying a model, see xref:02-platform-config.adoc#_gateway_pod_oomkill_prevention[Phase 2: Gateway OOMKill Prevention] for the fix.
+====
+
+Create the `llm` namespace if it doesn't exist and label it for RHOAI:
+
+[source,bash]
+----
+oc create namespace llm
+oc label namespace llm opendatahub.io/generated-namespace=true --overwrite
+oc label namespace llm maas.opendatahub.io/gateway-access=true --overwrite
+oc label namespace llm opendatahub.io/dashboard=true --overwrite
+----
+
+IMPORTANT: The `maas.opendatahub.io/gateway-access` label is required for any namespace that serves models through the MaaS Gateway. Without it, the Gateway will not accept HTTPRoutes from this namespace and the model will not be reachable.
+
+TIP: The `opendatahub.io/dashboard` label makes the `llm` namespace appear as a Data Science Project in the {rhoai} dashboard.
+
+Deploy the simulator (no GPU required):
+
+[source,bash]
+----
+oc apply -k manifests/05-maas-models/simulator/
+----
+
+[[xet-hang]]
+[NOTE]
+====
+*HuggingFace Xet Download Hang*
+
+The simulator uses `hf://sshleifer/tiny-gpt2` as its model URI. HuggingFace has migrated model storage to the Xet protocol, which can cause the KServe storage-initializer init container to hang indefinitely during download. If the model pod is stuck in `Init:0/1` for more than 5 minutes, apply this workaround:
+
+[source,bash]
+----
+oc patch deployment facebook-opt-125m-simulated-kserve -n llm \
+  --type=json \
+  -p '[{"op":"add","path":"/spec/template/spec/initContainers/0/env/-","value":{"name":"HF_HUB_DISABLE_XET","value":"1"}}]'
+----
+
+This disables the Xet protocol and falls back to standard HTTP downloads. The patched pod should complete init within 30 seconds. Note that KServe may revert this patch on reconciliation, so reapply if the model is redeployed.
+
+GPU models using OCI modelcar images (granite-tiny-gpu, gpt-oss-20b) are *not* affected by this issue since they do not download from HuggingFace.
+====
+
+For disconnected (air-gapped) clusters, use the disconnected simulator variant:
+
+[source,bash]
+----
+oc apply -k manifests/05-maas-models/simulator-disconnected/
+----
+
+Or deploy a CPU model that provides real inference without GPU:
+
+[source,bash]
+----
+# Qwen3-0.6B (CPU-only, no GPU required)
+oc apply -k manifests/05-maas-models/qwen3-06b/
+----
+
+Or deploy a GPU model if your cluster has NVIDIA GPUs:
+
+[source,bash]
+----
+# Gemma 2 9B IT FP8 (12GB+ VRAM, single L4)
+oc apply -k manifests/05-maas-models/gemma/
+
+# Granite 4.0-h-tiny FP8 (8GB+ VRAM)
+oc apply -k manifests/05-maas-models/granite-tiny-gpu/
+
+# GPT-oss-20b (16GB+ VRAM, L4 or better)
+oc apply -k manifests/05-maas-models/gpt-oss-20b/
+----
+
+== Verifying Model Readiness
+
+After deploying, verify that the model is ready:
+
+[source,bash]
+----
+# Check LLMInferenceService status
+oc get llminferenceservice -n llm
+
+# Check that model pods are running
+oc get pods -n llm
+
+# Check MaaSModelRef registration
+oc get maasmodelref -n llm -o wide
+
+# Check MaaSAuthPolicy and MaaSSubscription
+oc get maasauthpolicy -n models-as-a-service
+oc get maassubscription -n models-as-a-service
+----
+
+The LLMInferenceService should show a `Ready` condition. For GPU models, initial startup takes 5-15 minutes while the container image is pulled and model weights are loaded into GPU memory.
+
+== Testing Inference
+
+Once the model is ready, test inference through the MaaS API:
+
+[source,bash]
+----
+# Get the MaaS API domain
+CLUSTER_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
+MAAS_URL="maas.${CLUSTER_DOMAIN}"
+
+# Create an API key (requires the maas-api to be running)
+API_KEY=$(curl -sk -X POST "https://${MAAS_URL}/maas-api/v1/api-keys" \
+  -H "Authorization: Bearer $(oc whoami -t)" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "test-key", "subscription": "simulator-free", "expiresIn": "1h"}' \
+  | jq -r '.key')
+
+# List available models
+curl -sk "https://${MAAS_URL}/v1/models" \
+  -H "Authorization: Bearer ${API_KEY}"
+
+# Get the model ID from the listing
+MODEL_ID=$(curl -sk "https://${MAAS_URL}/v1/models" \
+  -H "Authorization: Bearer ${API_KEY}" | jq -r '.data[0].id')
+
+# Send a chat completion request (body-based routing)
+curl -sk "https://${MAAS_URL}/v1/chat/completions" \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"${MODEL_ID}\",
+    \"messages\": [{\"role\": \"user\", \"content\": \"Hello!\"}]
+  }"
+----
+
+IMPORTANT: The `model` field in the request body must match the `id` returned by `/v1/models`. For local models (LLMInferenceService), this is the canonical form `publishers/{namespace}/models/{model-name}` (e.g., `publishers/llm/models/facebook/opt-125m`). For external models (ExternalModel), it is just the model name (e.g., `gpt-4o-mini`). Using a short name like `facebook/opt-125m` for local models will return 404.
+
+== Removing a Model
+
+[source,bash]
+----
+oc delete -k manifests/05-maas-models/simulator/
+----
+
+== Adding a Model to an Existing Subscription
+
+If you already have a `MaaSSubscription` and `MaaSAuthPolicy` for one model and want to add a second model, you need to update *both* resources. This is a common Day 2 operation that catches people off guard.
+
+Deploy the new model (LLMInferenceService + MaaSModelRef) as usual, then update both the subscription and the auth policy:
+
+[source,bash]
+----
+# 1. Add the new model to the existing MaaSSubscription
+oc patch maassubscription <subscription-name> -n models-as-a-service --type=json \
+  -p '[{"op":"add","path":"/spec/modelRefs/-","value":{"name":"<new-model-ref>","namespace":"llm","tokenRateLimits":[{"limit":100,"window":"1m"}]}}]'
+
+# 2. Add the new model to the existing MaaSAuthPolicy
+oc patch maasauthpolicy <policy-name> -n models-as-a-service --type=json \
+  -p '[{"op":"add","path":"/spec/modelRefs/-","value":{"name":"<new-model-ref>","namespace":"llm"}}]'
+
+# 3. Verify the new model reaches Ready
+oc get maasmodelref -n llm -o wide
+----
+
+[WARNING]
+====
+If you update only the `MaaSSubscription` without updating the `MaaSAuthPolicy`, the new model will stay in `Pending` phase. The `MaaSModelRef` condition will show `No active subscription and auth policy pairing found`. This applies to both CLI and UI edits. See <<governance-pairing>> for details.
+====
+
+== ServiceAccount-Scoped Subscriptions
+
+For programmatic workloads (CI/CD pipelines, batch jobs, automated testing), you can restrict a model so that only a specific ServiceAccount can access it. This requires scoping *both* the `MaaSAuthPolicy` and the `MaaSSubscription` to the SA. If you only scope the subscription but leave the auth policy open to `system:authenticated`, any user can still access the model through other subscriptions.
+
+Create a ServiceAccount and generate a token:
+
+[source,bash]
+----
+oc create sa my-pipeline-sa -n default
+SA_TOKEN=$(oc create token my-pipeline-sa -n default --duration=24h)
+----
+
+Create a `MaaSAuthPolicy` that only grants this ServiceAccount access to the model:
+
+[source,bash]
+----
+cat <<EOF | oc apply -f -
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: simulator-pipeline-access
+  namespace: models-as-a-service
+  annotations:
+    openshift.io/display-name: "Simulator Pipeline Access"
+    openshift.io/description: "Grants access only to the pipeline ServiceAccount"
+spec:
+  modelRefs:
+    - name: facebook-opt-125m-simulated
+      namespace: llm
+  subjects:
+    groups: []
+    users:
+      - system:serviceaccount:default:my-pipeline-sa
+EOF
+----
+
+Create a `MaaSSubscription` scoped to the same ServiceAccount:
+
+[source,bash]
+----
+cat <<EOF | oc apply -f -
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: simulator-pipeline
+  namespace: models-as-a-service
+  annotations:
+    openshift.io/display-name: "Simulator Pipeline Tier"
+    openshift.io/description: "Dedicated rate limit for CI/CD pipeline"
+spec:
+  owner:
+    groups: []
+    users:
+      - system:serviceaccount:default:my-pipeline-sa
+  modelRefs:
+    - name: facebook-opt-125m-simulated
+      namespace: llm
+      tokenRateLimits:
+        - limit: 5000
+          window: 1m
+  priority: 15
+EOF
+----
+
+NOTE: The ServiceAccount identity in both resources must use the full format: `system:serviceaccount:{namespace}:{sa-name}`. Setting `groups: []` in both ensures only this SA can access the model and create API keys.
+
+[IMPORTANT]
+====
+Auth policies are additive. If the existing `simulator-access` policy (from the Phase 5 deployment) is still active with `system:authenticated`, all authenticated users can still access the model through that policy - regardless of the SA-scoped policy above. For full isolation, the model should only have SA-scoped governance resources and no broader policies.
+====
+
+Test it:
+
+[source,bash]
+----
+CLUSTER_DOMAIN=$(oc get ingresses.config/cluster -o jsonpath='{.spec.domain}')
+MAAS_URL="maas.${CLUSTER_DOMAIN}"
+
+# Create API key using the SA token
+API_KEY=$(curl -sk -X POST "https://${MAAS_URL}/maas-api/v1/api-keys" \
+  -H "Authorization: Bearer ${SA_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "pipeline-key", "subscription": "simulator-pipeline", "expiresIn": "1h"}' \
+  | jq -r '.key')
+
+# Run inference
+MODEL_ID=$(curl -sk "https://${MAAS_URL}/v1/models" \
+  -H "Authorization: Bearer ${API_KEY}" | jq -r '.data[0].id')
+
+curl -sk "https://${MAAS_URL}/v1/chat/completions" \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"${MODEL_ID}\",
+    \"messages\": [{\"role\": \"user\", \"content\": \"Hello from pipeline!\"}]
+  }"
+----
+
+A regular user trying to create an API key with `"subscription": "simulator-pipeline"` gets `invalid_subscription` - the maas-api checks the caller's identity against `spec.owner.users` and rejects anyone not listed.
+
+TIP: See the link:{repo-url}/tree/main/demo/service-account-access[Service Account Access demo] for a full walkthrough deploying an in-cluster app that calls a model with its SA token. Listed on the xref:demos.adoc[Demos] page.
+
+== Appendix
+
+=== Directory Structure
+
+Each model follows the same Kustomize layout:
+
+[source]
+----
+{model}/
+  kustomization.yaml          # Aggregates llm/ and maas/ subdirectories
+  llm/
+    model.yaml                # LLMInferenceService CR
+    kustomization.yaml        # Sets namespace: llm (+ namePrefix for simulator)
+  maas/
+    maas-model.yaml           # MaaSModelRef CR
+    maas-auth-policy.yaml     # MaaSAuthPolicy CR (namespace: models-as-a-service)
+    maas-subscription-free.yaml     # Free tier MaaSSubscription
+    maas-subscription-premium.yaml  # Premium tier MaaSSubscription
+    kustomization.yaml        # Lists all MaaS resources
+----
+
+== References
+
+* link:https://opendatahub-io.github.io/models-as-a-service/latest/[Upstream MaaS Documentation]
+* link:https://github.com/opendatahub-io/models-as-a-service[MaaS CRD Reference (models-as-a-service repo)]
+
+== Next step
+
+Proceed to xref:06-verification.adoc[Phase 6: Verification].

@@ -1,0 +1,12 @@
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSModelRef
+metadata:
+  name: gemini-2-5-flash
+  namespace: external-models
+  annotations:
+    openshift.io/display-name: "Gemini 2.5 Flash"
+    openshift.io/description: "Google Gemini 2.5 Flash via OpenAI-compatible API"
+spec:
+  modelRef:
+    kind: ExternalModel
+    name: gemini-2-5-flash

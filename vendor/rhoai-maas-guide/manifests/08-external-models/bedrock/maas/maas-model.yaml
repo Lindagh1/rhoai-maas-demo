@@ -1,0 +1,12 @@
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSModelRef
+metadata:
+  name: aws-gpt-oss-20b
+  namespace: external-models
+  annotations:
+    openshift.io/display-name: "AWS Bedrock GPT-OSS 20B"
+    openshift.io/description: "OpenAI GPT-OSS 20B via AWS Bedrock (OpenAI-compatible Mantle endpoint)"
+spec:
+  modelRef:
+    kind: ExternalModel
+    name: aws-gpt-oss-20b
