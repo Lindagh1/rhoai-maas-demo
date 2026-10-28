@@ -148,15 +148,20 @@ cleanup_test_resources() {
         fi
     fi
 
-    if oc get namespace "$MAAS_NS" &>/dev/null; then
-        REMAINING=$(oc get maassubscription,maasauthpolicy -n "$MAAS_NS" --no-headers 2>/dev/null | wc -l | tr -d ' ')
-        if [ "$REMAINING" = "0" ]; then
-            oc delete namespace "$MAAS_NS" 2>/dev/null || true
-            log_info "Deleted namespace $MAAS_NS"
-        else
-            log_info "Namespace $MAAS_NS still has resources, keeping it"
-        fi
-    fi
+    # NEVER delete $MAAS_NS ("models-as-a-service"): it is the shared MaaS
+    # tenant namespace, owned/created by the aigateway operator (holds the
+    # Tenant/MaasTenantConfig/AITenant CRs that maas-api depends on), not by
+    # this script. The previous logic only checked for leftover
+    # maassubscription/maasauthpolicy objects before deleting the whole
+    # namespace - on a fresh install (no persistent subscriptions/policies
+    # applied yet, e.g. right after setup-maas.sh Phase 5 was skipped
+    # because the model already existed) that check is "0" even though the
+    # namespace still holds the live Tenant. Deleting it took down the
+    # entire MaaS platform (maas-api pod terminated, health endpoint HTTP
+    # 000) until the operator reconciled and recreated everything ~30s
+    # later. See PATCHES.md for the full writeup. This script only ever
+    # creates maassubscription/maasauthpolicy objects *inside* $MAAS_NS, so
+    # just leave the namespace itself alone - nothing to clean up here.
 
     log_info "Cleanup complete"
 }

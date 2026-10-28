@@ -80,3 +80,99 @@ oc patch datasciencecluster default-dsc --type=merge -p '{
 also check the parent `aigateway.managementState`, so a future run (or a
 different sandbox with the same pre-provisioned drift) re-applies Phase 4
 instead of silently skipping it. See the diff in `scripts/setup-maas.sh`.
+
+## Cluster-side bug: `maas-api` CrashLoopBackOff — "found 2" Gateway Services
+
+**Symptom:** After the DSC fix above, the operator auto-created `maas-api`
+in `redhat-ai-gateway-infra`, but it crash-looped with:
+
+```
+error: failed to register handlers: failed to resolve gateway internal
+address: expected 1 gateway service for openshift-ingress/maas-default-gateway,
+found 2: [maas-default-gateway-openshift-ai-inference maas-default-gateway-openshift-default]
+```
+
+**Root cause:** this sandbox's pre-provisioned RHOAI catalog already had a
+`Gateway/maas-default-gateway` object (created 2026-10-27, on GatewayClass
+`openshift-ai-inference`, with a Service named
+`maas-default-gateway-openshift-ai-inference`). When Phase 2 of
+`setup-maas.sh` ran (today, 2026-10-28) it detected a hostname mismatch on
+that pre-existing Gateway and **re-applied it onto the guide's own
+GatewayClass** (`openshift-default`), which made the Gateway controller
+provision a *second* Service, `maas-default-gateway-openshift-default`. The
+first Service was never garbage-collected even though both are owned by the
+same `Gateway` UID (confirmed via `ownerReferences` — same owner, same
+selector, same endpoints) — the Gateway API implementation on this cluster
+leaves the old per-class Service behind on a `gatewayClassName` switch.
+`maas-api` hard-fails if it finds anything other than exactly one Service
+for the Gateway it's configured to use.
+
+This is specific to sandboxes that already had a `maas-default-gateway`
+object under a *different* GatewayClass before `setup-maas.sh` ran — not
+expected on a truly blank cluster, where the Gateway is created fresh under
+`openshift-default` and only ever has one Service.
+
+**Fix applied to the live cluster (one-time, not re-applicable by the
+script — it's a stale-object cleanup, not a config toggle):**
+
+```bash
+oc delete svc maas-default-gateway-openshift-ai-inference -n openshift-ingress
+oc rollout restart deployment/maas-api -n redhat-ai-gateway-infra
+```
+
+Verified safe to delete: both Services share the same `ownerReferences`
+(the single `Gateway/maas-default-gateway` object), the same pod selector,
+and the same endpoints — the deleted one was the orphan left over from the
+GatewayClass switch, not a second independent object.
+
+**Not patched into `scripts/setup-maas.sh`:** this is sandbox-specific
+cleanup of a pre-existing resource under an unrelated GatewayClass, not a
+reproducible step the script should always run (on a clean cluster there is
+no second Service to delete). If you hit the same `maas-api` crash on
+another sandbox, check `oc get svc -n openshift-ingress | grep
+<gateway-name>` for duplicates sharing the Gateway's `ownerReferences` UID
+before assuming it's the same cause.
+
+## Cluster-side bug: `manifests/06-verification/verify.sh` can delete the whole `models-as-a-service` namespace
+
+**Severity: high — this one briefly took down the entire MaaS platform.**
+
+**Symptom:** after a normal `verify.sh` run (Phase 6 "Cleanup"), the log
+printed `namespace "models-as-a-service" deleted` / `Deleted namespace
+models-as-a-service`. Seconds later: `maas-api` pod gone
+(`redhat-ai-gateway-infra` → "No resources found"), external
+`/maas-api/health` → `HTTP 000`, and
+`DataScienceCluster/default-dsc` condition `ModelsAsAServiceReady` flipped
+to `False` with message `AITenant: tenant namespace
+"models-as-a-service" is terminating; MaasTenantConfig: default
+MaasTenantConfig not yet created`.
+
+**Root cause:** `verify.sh`'s cleanup only checks
+`oc get maassubscription,maasauthpolicy -n models-as-a-service` to decide
+whether the namespace is "empty" before deleting it. It never checks for
+the operator-owned `Tenant`/`MaasTenantConfig`/`AITenant` CRs that also
+live in that namespace — the actual MaaS tenant, which `verify.sh` does
+not create and must never delete. On a sandbox where no *persistent*
+MaaSSubscription/MaaSAuthPolicy exists yet (e.g. right after
+`setup-maas.sh`, because Phase 5 only checked `LLMInferenceService` count
+and skipped re-applying the governance manifests for an
+already-deployed model), the only subscription/policy present are the
+ones `verify.sh` itself just created and is about to delete — so the
+"remaining" count hits `0` and it deletes the entire shared tenant
+namespace.
+
+**Recovery:** the `aigateway` operator self-healed within ~30-45s
+(recreated the namespace, `Tenant/default-tenant`, and the `maas-api`
+pod) once it reconciled again — no manual intervention was needed beyond
+waiting and re-checking `oc get maastenantconfigs -A` / `curl
+.../maas-api/health`. This self-healing is reassuring but should not be
+relied on; a sandbox with slower reconciliation, or one where `aigateway`
+is not actively `Managed`, would stay down.
+
+**Fix applied to this vendored script:** removed the `oc delete namespace
+"$MAAS_NS"` branch entirely from `verify.sh`'s cleanup. `$MAAS_NS` is a
+shared platform namespace the script does not own; it should only ever
+clean up the specific `maassubscription`/`maasauthpolicy` objects it
+created inside it (which it already does, earlier in the same cleanup
+function), never the namespace itself. See the diff in
+`manifests/06-verification/verify.sh`.
