@@ -12,7 +12,20 @@ Demo 2 réutilise le modèle et l'infrastructure de la Demo 1 sans les modifier 
 
 ## Chemin recommandé
 
-Si tu repars d'une **sandbox neuve**, utilise ce chemin simple :
+### Sandbox neuve → tout en une commande
+
+```bash
+oc login --server=<API> --token=<TOKEN>
+git clone https://github.com/Lindagh1/rhoai-maas-demo.git && cd rhoai-maas-demo
+bash scripts/bootstrap-redeployment.sh
+```
+
+Ça installe Demo 1 (modèle natif + MaaS + observabilité) et prépare Demo 2
+(identité + gouvernance) de façon idempotente, puis affiche à l'écran les
+2 seules étapes volontairement manuelles (créer les clés API dans le
+dashboard). Détails complets : [`docs/REDEPLOYMENT.md`](docs/REDEPLOYMENT.md).
+
+### Pas-à-pas (si tu veux du contrôle étape par étape)
 
 1. **Installer Demo 1**  
    `make demo1-all`
@@ -20,11 +33,16 @@ Si tu repars d'une **sandbox neuve**, utilise ce chemin simple :
    `make demo2-audit` puis `make demo2-setup`
 3. **Vérifier l'état avant la salle**  
    `make demo2-verify`
-4. **Suivre le guide live**  
-   [`docs/GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md)
+
+### Puis, dans les deux cas, pour jouer la démo
+
+4. **Créer les clés API** (dashboard, en session `maas-demo2-user`) puis  
+   `make demo2-capture-keys` et `make demo2-verify`
+5. **Suivre le guide live**  
+   [`docs/GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md) (ou son [PDF](docs/GUIDE-DEMO-LIVE-DEMO2.pdf)) pour Demo 2, [`docs/GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) pour Demo 1
 
 Ce repo distingue volontairement :
-- les **scripts de préparation/admin** (`make demo1-*`, `make demo2-*`)
+- les **scripts de préparation/admin** (`make demo1-*`, `make demo2-*`, `scripts/bootstrap-redeployment.sh`)
 - le **guide live client** (ce qu'on montre à l'écran)
 - les **constats réels** quand le produit ne se comporte pas exactement comme la doc.
 
@@ -54,6 +72,7 @@ Les manifests/scripts « historiques » et « orphelins » restent dans le dép�
 
 | Guide | Pour qui | Markdown | PDF |
 |---|---|---|---|
+| **Kit de redéploiement (sandbox neuve)** | Toi, avant tout le reste | [`REDEPLOYMENT.md`](docs/REDEPLOYMENT.md) | — |
 | **Installation (Demo 1)** | Toi, avant la démo | [`GUIDE-INSTALLATION-DEMO1.md`](docs/GUIDE-INSTALLATION-DEMO1.md) | [`PDF`](docs/GUIDE-INSTALLATION-DEMO1.pdf) |
 | **Démo live Demo 1 (clics console)** | Présentation client | [`GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) | [`PDF`](docs/GUIDE-DEMO-LIVE.pdf) |
 | **Démo live Demo 2 (dashboard + terminal)** | Présentation client | [`GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md) | [`PDF`](docs/GUIDE-DEMO-LIVE-DEMO2.pdf) |
@@ -65,12 +84,17 @@ Régénérer les PDF localement : `bash scripts/generate_pdf.sh`
 
 ---
 
-## Installation rapide
+## Installation rapide — équivalent sans `make`
+
+Pour une sandbox neuve, la commande à retenir reste celle de la section
+**« Chemin recommandé »** en haut de ce fichier
+(`bash scripts/bootstrap-redeployment.sh`). Ce qui suit est l'équivalent
+manuel de **Demo 1 seule**, script par script, pour qui préfère ne pas
+passer par `make` ou `bootstrap-redeployment.sh` :
 
 ```bash
 git clone https://github.com/Lindagh1/rhoai-maas-demo.git
 cd rhoai-maas-demo
-git checkout main
 
 oc login --server="$SANDBOX_API" --token="$SANDBOX_TOKEN" --insecure-skip-tls-verify=true
 
@@ -80,8 +104,7 @@ bash scripts/20-enable-maas.sh
 bash scripts/25-enable-observability.sh
 bash scripts/30-deploy-native-model.sh
 bash scripts/40-publish-maas.sh
-bash scripts/50-verify.sh
-bash scripts/50-verify.sh
+bash scripts/50-verify.sh && bash scripts/50-verify.sh   # 2x : vérifie aussi l'idempotence
 ```
 
 Nettoyage (ressources de la démo seulement) :
