@@ -10,6 +10,17 @@ Demo 2 : abonnements MaaS → clé API utilisateur → inférence gouvernée (qu
 Demo 2 réutilise le modèle et l'infrastructure de la Demo 1 sans les modifier — voir
 [`DEMO2-RESULTS.md`](DEMO2-RESULTS.md) pour l'état complet (PASS/BLOCKED/FAIL par scénario).
 
+## Corporate Scenario (guide officiel `rhoai-maas-guide`)
+
+Piste **séparée** des Demo 1/Demo 2 ci-dessous : suit tel quel le guide
+officiel [rh-aiservices-bu/rhoai-maas-guide](https://github.com/rh-aiservices-bu/rhoai-maas-guide)
+(installation MaaS Phases 0-6 + sa démo "Corporate Scenario" — un CIO
+déploie MaaS sur 3 divisions avec accès/quotas différenciés). Le guide est
+vendored dans [`vendor/rhoai-maas-guide/`](vendor/rhoai-maas-guide/), bugs
+réels trouvés et corrigés documentés dans
+[`vendor/rhoai-maas-guide/PATCHES.md`](vendor/rhoai-maas-guide/PATCHES.md).
+Résultats complets : [`docs/CORPORATE-SCENARIO-RESULTS.md`](docs/CORPORATE-SCENARIO-RESULTS.md).
+
 ## Chemin recommandé
 
 ### Sandbox neuve → tout en une commande
