@@ -1,0 +1,121 @@
+# Captures a REAL fix applied live on the sandbox during this project, which
+# was never committed as a manifest until now (pure drift between the
+# cluster and the repo).
+#
+# Root cause (confirmed live): the Prometheus instance created by the
+# Cluster Observability Operator's MonitoringStack (`data-science-
+# monitoringstack`, in `redhat-ods-monitoring`) uses a SEPARATE CRD API
+# group (`monitoring.rhobs`) from the platform's standard PodMonitor/
+# ServiceMonitor objects (`monitoring.coreos.com`). It therefore:
+#   1. never discovers `PodMonitor` objects created under
+#      `monitoring.coreos.com` (e.g. the platform-shipped
+#      `maas-api-metrics`, `kuadrant-limitador-monitor`), even though its
+#      own `podMonitorSelector`/`resourceSelector` match everything; and
+#   2. even for `monitoring.rhobs` PodMonitor objects, only looks for them
+#      in its OWN namespace (`redhat-ods-monitoring`) by default
+#      (`podMonitorNamespaceSelector` is empty/nil), and its generated
+#      Prometheus ServiceAccount has NO RBAC at all to list pods in other
+#      namespaces (confirmed via `oc auth can-i list pods -n kuadrant-system
+#      --as=system:serviceaccount:redhat-ods-monitoring:data-science-
+#      monitoringstack-prometheus` -> "no").
+#
+# Fix applied here (verified live, target "up" in Prometheus after
+# applying): mirror the two PodMonitors under `monitoring.rhobs/v1`, in
+# Prometheus's OWN namespace with an explicit `namespaceSelector` pointing
+# at the real target namespace, plus a minimal ClusterRole + two
+# namespace-scoped RoleBindings granting the Prometheus ServiceAccount
+# read access to pods/endpoints/services in exactly those two namespaces
+# (least-privilege: no ClusterRoleBinding).
+#
+# Known residual limitation (documented, not fixed by this manifest): even
+# once scraped, Limitador's own exported metrics
+# (`authorized_calls_total`, `limited_calls_total`, `authorized_hits_total`)
+# do not carry a usable per-user label on this RHOAI 3.5.2 build, so the
+# dashboard's "Observe & Monitor -> Dashboard -> Usage" tab can still show
+# 0 even after real traffic. See docs/demo2/05-troubleshooting.md.
+#
+# Idempotent: apply via `oc apply -f`, safe to re-run. Wired into
+# scripts/25-enable-observability.sh.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rhoai-maas-demo-prometheus-pod-reader
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "endpoints", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rhoai-maas-demo-prometheus-pod-reader
+  namespace: redhat-ai-gateway-infra
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhoai-maas-demo-prometheus-pod-reader
+subjects:
+  - kind: ServiceAccount
+    name: data-science-monitoringstack-prometheus
+    namespace: redhat-ods-monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rhoai-maas-demo-prometheus-pod-reader
+  namespace: kuadrant-system
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhoai-maas-demo-prometheus-pod-reader
+subjects:
+  - kind: ServiceAccount
+    name: data-science-monitoringstack-prometheus
+    namespace: redhat-ods-monitoring
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  name: maas-api-metrics-rhobs
+  namespace: redhat-ods-monitoring
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/component: observability-bridge
+spec:
+  namespaceSelector:
+    matchNames:
+      - redhat-ai-gateway-infra
+  podMetricsEndpoints:
+    - interval: 30s
+      path: /metrics
+      port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: maas-api
+---
+apiVersion: monitoring.rhobs/v1
+kind: PodMonitor
+metadata:
+  name: kuadrant-limitador-monitor-rhobs
+  namespace: redhat-ods-monitoring
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/component: observability-bridge
+spec:
+  namespaceSelector:
+    matchNames:
+      - kuadrant-system
+  podMetricsEndpoints:
+    - path: /metrics
+      port: http
+      scheme: http
+  selector:
+    matchLabels:
+      app: limitador
+      limitador-resource: limitador

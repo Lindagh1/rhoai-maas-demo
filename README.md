@@ -36,13 +36,17 @@ Ce dépôt a accumulé plusieurs démos RHOAI construites sur les mêmes sandbox
 
 | Dossier / fichier | Démo | Statut |
 |---|---|---|
-| `scripts/00-audit.sh` … `99-cleanup.sh`, `manifests/platform/`, `manifests/model/`, `manifests/maas/`, `docs/GUIDE-*`, `docs/sandbox-audit.md` | **Demo 1 — MaaS natif llm-d** | Actif, maintenu |
+| `scripts/00-audit.sh` … `99-cleanup.sh`, `manifests/platform/`, `manifests/model/`, `manifests/rhoai-operator/`, `docs/GUIDE-*`, `docs/sandbox-audit.md` | **Demo 1 — MaaS natif llm-d** | Actif, maintenu |
+| `manifests/maas/maas-model-ref.yaml` | Publication MaaS du modèle Demo 1 | Actif, maintenu |
 | `scripts/demo2/`, `manifests/demo2/`, `docs/demo2/`, `docs/GUIDE-DEMO-LIVE-DEMO2.md`, `DEMO2-RESULTS.md` | **Demo 2 — parcours utilisateur MaaS** (abonnements, clés API, quotas, révocation) | Actif, maintenu |
-| `manifests/rhoai-operator/`, `scripts/install-rhoai-operator.sh`, `scripts/bootstrap.sh`, `scripts/preflight.sh`, `scripts/status.sh`, `docs/BASELINE.md`, `docs/PREFLIGHT.md` | Installation RHOAI de base (sandbox `t5lkh`) | Historique |
+| `manifests/maas/maas-subscription.yaml`, `manifests/maas/maas-auth-policy.yaml` | Gouvernance publique `system:authenticated` de l'ancien sandbox `t5lkh` | **Orphelin — non appliqué sur cette sandbox, ne pas réutiliser.** La gouvernance réelle et active passe par `manifests/demo2/10-*`/`11-*`/`12-*`, scopée au groupe `maas-demo2-developers`. |
+| `scripts/install-rhoai-operator.sh`, `scripts/bootstrap.sh`, `scripts/preflight.sh`, `scripts/status.sh`, `scripts/api_key.sh`, `scripts/demo-auth.sh`, `scripts/demo-rate-limit.sh`, `scripts/validate.sh`, `scripts/test-idempotency.sh`, `scripts/cleanup.sh`, `docs/BASELINE.md`, `docs/PREFLIGHT.md` | Installation RHOAI de base (ancien sandbox `t5lkh`) | Historique |
 | `openshift-ai-demo/`, `manifests/fraud-detection-tutorial/`, `manifests/workbench-vscode-demo/` | Knowledge Advisor (RAG) / fraud-detection / workbench VS Code | Historique, autres démos |
 | `docs/sandbox-t5lkh/` | Docs spécifiques à l'ancien sandbox `t5lkh` | Historique |
 
-Les manifests/scripts « historiques » restent dans le dépôt pour traçabilité, mais **ne font pas partie du parcours Demo 1** décrit ci-dessous.
+Les manifests/scripts « historiques » et « orphelins » restent dans le dépôt pour traçabilité, mais **ne font pas partie du parcours Demo 1/Demo 2** décrit ci-dessous, et ne doivent pas être appliqués sur une nouvelle sandbox.
+
+**Kit de redéploiement sur sandbox neuve** : voir [`docs/REDEPLOYMENT.md`](docs/REDEPLOYMENT.md) — inventaire complet, script de bootstrap unique, validation sans mutation, et liste précise de ce qui reste volontairement manuel (dashboard).
 
 ---
 

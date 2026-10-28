@@ -1,3 +1,9 @@
+# ORPHANED / NOT CURRENTLY APPLIED on the active sandbox (verified live via
+# `oc get maasauthpolicy maas-demo-access -n models-as-a-service` ->
+# NotFound). Same origin/caveat as manifests/maas/maas-subscription.yaml --
+# do NOT apply this on a new sandbox. Real governance is
+# manifests/demo2/11-maas-authpolicy.yaml.
+#
 # Authorization policy: grants API-gateway access to the demo simulator for
 # the same group as the subscription. Per official docs, BOTH a subscription
 # (quota) AND an authorization policy (gateway access) are required -- a

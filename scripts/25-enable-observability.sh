@@ -137,6 +137,14 @@ else
   warn "Dashboard ObservabilityAvailable=$OBS_AVAILABLE — may need another minute; re-run this script to re-check"
 fi
 
+# --- rhobs-group PodMonitor mirrors + RBAC (real fix found live) ---
+# The COO-provisioned Prometheus uses the monitoring.rhobs CRD group and has
+# no RBAC to list pods outside its own namespace by default -- see the long
+# comment header in the manifest itself for the full root cause.
+info "Ensuring observability RBAC + rhobs PodMonitor mirrors (Limitador/maas-api scraping)"
+oc apply -f manifests/rhoai-operator/13-observability-rbac-podmonitors.yaml >/dev/null
+ok "Observability RBAC + PodMonitor mirrors applied"
+
 echo ""
 ok "Observability stage complete."
 info "In the OpenShift AI dashboard: Observe & Monitor → Dashboard."

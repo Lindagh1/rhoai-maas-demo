@@ -1,3 +1,12 @@
+# ORPHANED / NOT CURRENTLY APPLIED on the active sandbox (verified live via
+# `oc get maassubscription maas-demo-subscription -n models-as-a-service` ->
+# NotFound). This file belongs to the older, pre-Demo2 t5lkh-sandbox tooling
+# (scripts/demo-auth.sh, scripts/api_key.sh, scripts/status.sh) and grants
+# PUBLIC access to every authenticated user on the cluster. Do NOT apply
+# this on a new sandbox as part of the Demo1/Demo2 redeployment kit -- the
+# real, active, scoped governance is manifests/demo2/10-maas-subscription.yaml
+# (group maas-demo2-developers only). Kept only for historical traceability.
+#
 # Subscription-based quota (RHOAI 3.4+ replaces the old tier-based model).
 # Grants every authenticated user (system:authenticated) quota to call the
 # demo simulator, capped at 100 tokens/minute -- low enough to trip the
