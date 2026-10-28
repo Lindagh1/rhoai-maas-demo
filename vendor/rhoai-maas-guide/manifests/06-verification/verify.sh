@@ -674,12 +674,33 @@ fi
 log_step "Phase 4: Auth enforcement"
 
 if [ -n "${INFERENCE_MODEL:-}" ]; then
+    # auth_check_curl: retries the auth-enforcement curl itself a couple of
+    # times on bare "000"/connection-level failures before giving up. Added
+    # because this gateway occasionally drops one isolated request (not the
+    # app rejecting it - maas-api never even logs it) with no observable
+    # pattern between "no token" vs "invalid token"; a single transient
+    # network blip shouldn't fail the whole verification. A real 401/403
+    # (or any other real HTTP code) still returns immediately on the first
+    # try. See PATCHES.md.
+    auth_check_curl() {
+        local code
+        for _attempt in 1 2 3; do
+            code=$(maas_curl -o /dev/null -w '%{http_code}' "$@" 2>/dev/null)
+            [ -z "$code" ] && code="000"
+            if [ "$code" != "000" ]; then
+                echo "$code"
+                return 0
+            fi
+            sleep 3
+        done
+        echo "$code"
+    }
+
     # No token
-    NO_AUTH_CODE=$(maas_curl \
-        -o /dev/null -w '%{http_code}' \
+    NO_AUTH_CODE=$(auth_check_curl \
         -H "Content-Type: application/json" \
         -d "{\"model\": \"${INFERENCE_MODEL}\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}], \"max_tokens\": 10}" \
-        "${HOST}/v1/chat/completions" 2>/dev/null || echo "000")
+        "${HOST}/v1/chat/completions")
 
     if [ "$NO_AUTH_CODE" = "401" ] || [ "$NO_AUTH_CODE" = "403" ]; then
         log_pass "Unauthenticated request rejected (HTTP $NO_AUTH_CODE)"
@@ -688,12 +709,11 @@ if [ -n "${INFERENCE_MODEL:-}" ]; then
     fi
 
     # Invalid token
-    INVALID_CODE=$(maas_curl \
-        -o /dev/null -w '%{http_code}' \
+    INVALID_CODE=$(auth_check_curl \
         -H "Authorization: Bearer invalid-token-12345" \
         -H "Content-Type: application/json" \
         -d "{\"model\": \"${INFERENCE_MODEL}\", \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}], \"max_tokens\": 10}" \
-        "${HOST}/v1/chat/completions" 2>/dev/null || echo "000")
+        "${HOST}/v1/chat/completions")
 
     if [ "$INVALID_CODE" = "401" ] || [ "$INVALID_CODE" = "403" ]; then
         log_pass "Invalid token rejected (HTTP $INVALID_CODE)"
