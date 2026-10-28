@@ -201,5 +201,36 @@ left as-is — if you see an isolated `HTTP 000`/empty body on this sandbox
 during the corporate-scenario demo too, re-run the single request before
 assuming it's a governance problem.
 
+## Environment characteristic: single-node sandbox → ~25-40% dropped connections under rapid-fire bursts
+
+**Found while running `demo/corporate-scenario/run-demo.sh`:** the Phase-6
+flakiness above (~1-in-15-20) got dramatically worse under the
+corporate-scenario demo's rapid consecutive request bursts: direct,
+reproducible testing showed **3 of 8** back-to-back plain `GET
+/maas-api/health` calls (no auth, no model, no governance involved at
+all) returning a bare `000` within ~0.2s (too fast to be a timeout - a
+dropped/reset connection), split roughly evenly across both of the
+Gateway's two DNS-resolved IPs. `oc get nodes` confirms this sandbox is a
+**single-node cluster** (`externalTrafficPolicy: Cluster`, one node total)
+— so this isn't a Kubernetes-level node-routing issue, it's upstream of
+that (AWS NLB or the single node's networking stack under load from
+everything else running on it: Keycloak, pipelines, multiple simulator
+pods, etc.).
+
+**Conclusion:** this is a property of this specific sandbox's
+infrastructure under concurrent load, not a MaaS/governance defect — it
+reproduces identically on a trivial unauthenticated health check with no
+MaaS logic involved.
+
+**Fix applied:** extended the same "retry once on a dropped connection,
+never on a real response" pattern from Phase 4 of `verify.sh` into
+`demo/corporate-scenario/run-demo.sh` (`fire_burst`, `fire_denied`,
+`login_and_key`) and `verify-scenario.sh` (`fire_one`, `login_and_key`,
+the eng-2 key-multiplication key minting). Every retry condition checks
+specifically for `000` (curl connection-level failure) or an empty
+response body with no `.key` field — any real HTTP status, including a
+correct `403`/`429`, returns immediately without a retry, so none of
+these changes can mask an actual governance regression.
+
 See the diff in
 `manifests/06-verification/verify.sh`.

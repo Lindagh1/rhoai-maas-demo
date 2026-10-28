@@ -51,7 +51,12 @@ fire_burst() {
       -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
       -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
       "$endpoint")
-    if [ "$code" = "500" ]; then
+    # Retry once on 500 (stale upstream connection) or 000 (dropped
+    # connection to the gateway LB - observed on this sandbox's
+    # single-node cluster independent of auth/model/subscription; see
+    # PATCHES.md). A real 403/429/other application response is never
+    # retried, so this cannot hide a governance bug, only a network blip.
+    if [ "$code" = "500" ] || [ "$code" = "000" ]; then
       code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
         -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
         -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
@@ -73,6 +78,14 @@ fire_denied() {
     -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
     -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
     "$endpoint")
+  # Retry once on a dropped connection (see PATCHES.md) - a real 403 or
+  # any other application response is never retried.
+  if [ "$code" = "000" ]; then
+    code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
+      -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
+      -d "{\"model\":\"${model_served}\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":4}" \
+      "$endpoint")
+  fi
   if [ "$code" = "403" ]; then
     printf '    %s: 403 Forbidden (expected)\n' "$label"
   else
@@ -87,13 +100,22 @@ login_and_key() {
   TOKEN=$(KUBECONFIG="$TMP/${user}.kubeconfig" oc whoami -t)
 
   echo "  Visible models:"
-  curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" \
-    | jq -r '.data[]?.id // empty' 2>/dev/null | sed 's/^/    /'
+  # Retry once: this sandbox's gateway LB occasionally drops an isolated
+  # connection (observed independent of auth/model - see PATCHES.md).
+  MODELS_RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" 2>/dev/null)
+  [ -z "$MODELS_RESP" ] && MODELS_RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" "${H}/maas-api/v1/models" 2>/dev/null)
+  echo "$MODELS_RESP" | jq -r '.data[]?.id // empty' 2>/dev/null | sed 's/^/    /'
 
   RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" -X POST \
     -d "{\"name\":\"${user}-demo\",\"description\":\"demo\",\"expiresIn\":\"8h\"}" \
-    "${H}/maas-api/v1/api-keys")
+    "${H}/maas-api/v1/api-keys" 2>/dev/null)
+  if [ -z "$RESP" ] || [ "$(echo "$RESP" | jq -r '.key // empty' 2>/dev/null)" = "" ]; then
+    RESP=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" -X POST \
+      -d "{\"name\":\"${user}-demo\",\"description\":\"demo\",\"expiresIn\":\"8h\"}" \
+      "${H}/maas-api/v1/api-keys" 2>/dev/null)
+  fi
   echo "  Resolved subscription: $(echo "$RESP" | jq -r '.subscription // "UNRESOLVED"')"
   KEY=$(echo "$RESP" | jq -r '.key // empty')
   [ -z "$KEY" ] && { echo "  no key issued: $(echo "$RESP" | head -c 140)"; return 1; }

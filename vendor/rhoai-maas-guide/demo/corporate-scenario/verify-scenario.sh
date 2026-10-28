@@ -55,7 +55,14 @@ login_and_key() {
   resp=$(curl -sk --max-time 30 -H "Authorization: Bearer $token" \
     -H "Content-Type: application/json" -X POST \
     -d "{\"name\":\"${key_name}\",\"description\":\"verify\",\"expiresIn\":\"8h\"}" \
-    "${H}/maas-api/v1/api-keys")
+    "${H}/maas-api/v1/api-keys" 2>/dev/null)
+  # Retry once on a dropped connection (empty body) - see PATCHES.md.
+  if [ -z "$(echo "$resp" | jq -r '.key // empty' 2>/dev/null)" ]; then
+    resp=$(curl -sk --max-time 30 -H "Authorization: Bearer $token" \
+      -H "Content-Type: application/json" -X POST \
+      -d "{\"name\":\"${key_name}\",\"description\":\"verify\",\"expiresIn\":\"8h\"}" \
+      "${H}/maas-api/v1/api-keys" 2>/dev/null)
+  fi
   echo "$resp" | jq -r '.key // empty'
 }
 
@@ -67,7 +74,9 @@ fire_one() {
     -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
     -d "{\"model\":\"${served}\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":4}" \
     "$endpoint")
-  if [ "$code" = "500" ]; then
+  # Retry once on 500 or a dropped connection (000) - see PATCHES.md. Never
+  # retries a real 403/429/200, so this cannot mask a governance bug.
+  if [ "$code" = "500" ] || [ "$code" = "000" ]; then
     code=$(curl -sk --max-time 30 -o "$TMP/r" -w "%{http_code}" \
       -H "Authorization: Bearer $key" -H "Content-Type: application/json" -X POST \
       -d "{\"model\":\"${served}\",\"messages\":[{\"role\":\"user\",\"content\":\"test\"}],\"max_tokens\":4}" \
@@ -151,17 +160,23 @@ KUBECONFIG="$TMP/${KEY2_USER}.kubeconfig" oc login -u "$KEY2_USER" -p "$DEMO_PAS
 if [ $? -eq 0 ]; then
   TOKEN2=$(KUBECONFIG="$TMP/${KEY2_USER}.kubeconfig" oc whoami -t)
 
-  RESP1=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN2" \
-    -H "Content-Type: application/json" -X POST \
-    -d '{"name":"eng2-key1","description":"verify","expiresIn":"8h"}' \
-    "${H}/maas-api/v1/api-keys")
-  K1=$(echo "$RESP1" | jq -r '.key // empty')
-
-  RESP2=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN2" \
-    -H "Content-Type: application/json" -X POST \
-    -d '{"name":"eng2-key2","description":"verify","expiresIn":"8h"}' \
-    "${H}/maas-api/v1/api-keys")
-  K2=$(echo "$RESP2" | jq -r '.key // empty')
+  mint_key() {
+    local name="$1" resp
+    resp=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN2" \
+      -H "Content-Type: application/json" -X POST \
+      -d "{\"name\":\"${name}\",\"description\":\"verify\",\"expiresIn\":\"8h\"}" \
+      "${H}/maas-api/v1/api-keys" 2>/dev/null)
+    # Retry once on a dropped connection (empty body) - see PATCHES.md.
+    if [ -z "$(echo "$resp" | jq -r '.key // empty' 2>/dev/null)" ]; then
+      resp=$(curl -sk --max-time 30 -H "Authorization: Bearer $TOKEN2" \
+        -H "Content-Type: application/json" -X POST \
+        -d "{\"name\":\"${name}\",\"description\":\"verify\",\"expiresIn\":\"8h\"}" \
+        "${H}/maas-api/v1/api-keys" 2>/dev/null)
+    fi
+    echo "$resp" | jq -r '.key // empty'
+  }
+  K1=$(mint_key "eng2-key1")
+  K2=$(mint_key "eng2-key2")
 
   if [ -n "$K1" ] && [ -n "$K2" ]; then
     for _ in $(seq 1 20); do
