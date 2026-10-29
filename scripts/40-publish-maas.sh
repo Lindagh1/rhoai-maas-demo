@@ -33,13 +33,21 @@ ok "Server dry-run accepted"
 info "Applying MaaSModelRef (declarative publication)"
 oc apply --server-side=true -f manifests/maas/maas-model-ref.yaml
 
-info "Waiting for MaaSModelRef Ready (up to 3 min)..."
+info "Waiting for MaaSModelRef RuntimeReady (backend healthy) — up to 3 min..."
+# NOTE: on RHOAI 3.5.2, MaaSModelRef.status.phase only reaches "Ready" once a
+# MaaSSubscription + MaaSAuthPolicy pair exists (Demo 2's governance). Until
+# then it legitimately stays "Pending" with GovernanceAttached=False — that
+# is documented, expected behaviour (see GUIDE.md §9 and scripts/50-verify.sh,
+# which treats it as an "expected Demo 2 blocker", not a failure). This stage
+# (Demo 1's publication proof) must NOT hard-require full Ready, otherwise the
+# single-command bootstrap can never reach Demo 2 on a fresh sandbox.
 PHASE=""
+RUNTIME_READY=""
 for _ in $(seq 1 18); do
   PHASE=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo -o jsonpath='{.status.phase}' 2>/dev/null || true)
-  READY=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo \
-    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
-  [[ "$PHASE" == "Ready" || "$READY" == "True" ]] && break
+  RUNTIME_READY=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo \
+    -o jsonpath='{.status.conditions[?(@.type=="RuntimeReady")].status}' 2>/dev/null || true)
+  [[ "$PHASE" == "Ready" || "$RUNTIME_READY" == "True" ]] && break
   sleep 10
 done
 
@@ -47,13 +55,15 @@ oc get maasmodelref demo-simulator -n rhoai-maas-demo -o wide || true
 oc get maasmodelref demo-simulator -n rhoai-maas-demo -o jsonpath='{.spec}{"\n"}{.status}{"\n"}' || true
 
 PHASE=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo -o jsonpath='{.status.phase}' 2>/dev/null || true)
-READY=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo \
-  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+RUNTIME_READY=$(oc get maasmodelref demo-simulator -n rhoai-maas-demo \
+  -o jsonpath='{.status.conditions[?(@.type=="RuntimeReady")].status}' 2>/dev/null || true)
 
-if [[ "$PHASE" == "Ready" || "$READY" == "True" ]]; then
-  ok "MaaSModelRef Ready (phase=${PHASE:-n/a})"
+if [[ "$PHASE" == "Ready" ]]; then
+  ok "MaaSModelRef fully Ready (governance already paired)"
+elif [[ "$RUNTIME_READY" == "True" ]]; then
+  ok "MaaSModelRef backend RuntimeReady=True (phase=${PHASE:-Pending} — full Ready deferred to Demo 2's governance pairing, as documented)"
 else
-  warn "MaaSModelRef not Ready yet (phase=${PHASE:-n/a} ready=${READY:-n/a})"
+  warn "MaaSModelRef backend not RuntimeReady yet (phase=${PHASE:-n/a})"
   oc describe maasmodelref demo-simulator -n rhoai-maas-demo | tail -40 || true
   exit 1
 fi

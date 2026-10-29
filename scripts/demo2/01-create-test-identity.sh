@@ -41,7 +41,7 @@ case "$STRATEGY" in
       fi
     else
       PASSWORD=$(gen_password)
-      HASH=$(openssl passwd -apr1 "$PASSWORD")
+      HASH=$(gen_apr1_hash "$PASSWORD")
       NEW_CONTENT=$(printf '%s\n%s:%s\n' "$CURRENT" "$DEMO2_USER" "$HASH")
       TMP=$(mktemp)
       printf '%s' "$NEW_CONTENT" > "$TMP"
@@ -155,7 +155,7 @@ print(json.dumps({
     fi
     info "ADD_HTPASSWD_IDP=yes — creating a new, additive HTPasswd identity provider (existing providers, if any, are left untouched)."
     PASSWORD=$(gen_password)
-    HASH=$(openssl passwd -apr1 "$PASSWORD")
+    HASH=$(gen_apr1_hash "$PASSWORD")
     TMP=$(mktemp)
     printf '%s:%s\n' "$DEMO2_USER" "$HASH" > "$TMP"
     oc create secret generic htpasswd-demo2 -n openshift-config \

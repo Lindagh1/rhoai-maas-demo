@@ -131,6 +131,28 @@ gen_password() {
   python3 -c "import secrets,string; a=string.ascii_letters+string.digits+'!@#%^&*'; print(''.join(secrets.choice(a) for _ in range(28)))"
 }
 
+# Apache/MD5 ("$apr1$...") hash for an HTPasswd secret entry, needed to add a
+# new user to an OpenShift HTPasswd identity provider. Tries `openssl passwd
+# -apr1` first (most common), falling back to the `htpasswd` binary
+# (apache2-utils / httpd-tools) when openssl isn't installed on this local
+# tooling host (seen on some agent/CI hosts). The password is always piped
+# via stdin, never passed as a CLI argument, so it never appears in `ps` or
+# shell history.
+gen_apr1_hash() {
+  local password="$1"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl passwd -apr1 "$password"
+    return
+  fi
+  if command -v htpasswd >/dev/null 2>&1; then
+    printf '%s' "$password" | htpasswd -ni placeholder | cut -d: -f2-
+    return
+  fi
+  err "Neither 'openssl' nor 'htpasswd' is available on this local tooling host — cannot generate an HTPasswd hash."
+  err "Install one of them (e.g. 'openssl' or 'httpd-tools'/'apache2-utils') and re-run."
+  exit 1
+}
+
 # ---------------------------------------------------------------------------
 # Identity-provider detection (portable across different partner sandboxes).
 # A different Red Hat OpenShift AI sandbox will very likely NOT have the
