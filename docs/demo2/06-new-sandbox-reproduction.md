@@ -51,6 +51,22 @@ jetable dédiée à la démo, c'est le bon chemin. Sur un environnement
 partagé d'entreprise avec un IdP externe, il faut s'arrêter et suivre
 `docs/demo2/09-auth-oidc-entra.md`.
 
+**Identifiants générés :** le script crée (ou retrouve) l'utilisateur
+`maas-demo2-user` et écrit un mot de passe généré **une seule fois**,
+en local, jamais commité, dans `secrets/demo2/maas-demo2-user.password`.
+Pour le lire :
+
+```bash
+cat secrets/demo2/maas-demo2-user.password
+```
+
+C'est ce login/mot de passe qu'on utilise pour se connecter au dashboard
+RHOAI en tant qu'utilisateur final (étape 6 ci-dessous). Si le fichier
+est vide alors que l'utilisateur existe déjà sur cette sandbox (ex. créé
+par un run précédent dont le fichier local a été perdu), voir
+`docs/demo2/05-troubleshooting.md` : le mot de passe ne peut pas être
+retrouvé depuis le hash stocké côté IdP, il faut le réinitialiser.
+
 ### 4. Accorder l'accès MaaS
 
 ```bash

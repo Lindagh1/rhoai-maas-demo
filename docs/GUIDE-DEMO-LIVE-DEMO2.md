@@ -22,7 +22,13 @@ La version la plus claire en live est :
 ## Avant d'entrer en salle
 
 1. `make demo2-verify`
-2. Vérifier que l'utilisateur `maas-demo2-user` peut se connecter
+2. Vérifier que l'utilisateur `maas-demo2-user` peut se connecter — identifiants :
+   - **Login :** `maas-demo2-user`
+   - **Mot de passe :** généré par `make demo2-create-identity`, stocké localement (jamais commité) dans `secrets/demo2/maas-demo2-user.password`. Pour le lire :
+     ```bash
+     cat secrets/demo2/maas-demo2-user.password
+     ```
+   - Si ce fichier est vide/absent alors que l'utilisateur existe déjà, voir [`docs/demo2/05-troubleshooting.md`](demo2/05-troubleshooting.md) (le mot de passe ne peut pas être récupéré depuis le hash — il faut le réinitialiser).
 3. Avoir un workbench utilisateur prêt, ou au moins le projet `rhoai-maas-demo` visible
 4. Avoir sous la main :
    - `secrets/demo2/maas-demo2-user.apikey`

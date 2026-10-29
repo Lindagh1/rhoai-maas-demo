@@ -47,8 +47,10 @@ dashboard). Détails complets : [`docs/REDEPLOYMENT.md`](docs/REDEPLOYMENT.md).
 
 ### Puis, dans les deux cas, pour jouer la démo
 
-4. **Créer les clés API** (dashboard, en session `maas-demo2-user`) puis  
-   `make demo2-capture-keys` et `make demo2-verify`
+4. **Créer les clés API** (dashboard, en session `maas-demo2-user` —
+   mot de passe dans `secrets/demo2/maas-demo2-user.password`, généré
+   par `make demo2-create-identity` : `cat secrets/demo2/maas-demo2-user.password`)
+   puis `make demo2-capture-keys` et `make demo2-verify`
 5. **Suivre le guide live**  
    [`docs/GUIDE-DEMO-LIVE-DEMO2.md`](docs/GUIDE-DEMO-LIVE-DEMO2.md) (ou son [PDF](docs/GUIDE-DEMO-LIVE-DEMO2.pdf)) pour Demo 2, [`docs/GUIDE-DEMO-LIVE.md`](docs/GUIDE-DEMO-LIVE.md) pour Demo 1
 

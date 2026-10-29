@@ -25,6 +25,34 @@ this exact procedure was run once to verify the identity, then this
 specific failure mode was no longer relevant for the rest of the demo
 (API-key-based testing doesn't need `oc login` as the test user at all).
 
+## "Where is the `maas-demo2-user` password?" / password file empty
+
+**Where it lives:** `make demo2-create-identity` (`scripts/demo2/01-create-test-identity.sh`)
+generates the password **once** and writes it, in clear, locally only
+(chmod `600`, gitignored, never printed to the terminal), to:
+
+```text
+secrets/demo2/maas-demo2-user.password
+```
+
+Read it with:
+
+```bash
+cat secrets/demo2/maas-demo2-user.password
+```
+
+**If that file is empty or missing but the user already exists** on this
+sandbox (e.g. created by an earlier run whose local `secrets/` was lost):
+
+- **Keycloak (in-cluster, the strategy used on this project's sandbox):**
+  just re-run `make demo2-create-identity` — the script detects the
+  missing local file, resets the password via the Keycloak Admin API,
+  and writes the new value to the same path. Fully idempotent, safe.
+- **HTPasswd:** the password **cannot** be recovered from the stored
+  hash. Either ask whoever created it, or delete the
+  `maas-demo2-user:<hash>` line from the `openshift-config` htpasswd
+  secret and re-run `make demo2-create-identity` to regenerate it.
+
 ## `curl` to the MaaS gateway hangs or fails to resolve
 
 **Cause:** on some sandboxes, the Gateway's LoadBalancer hostname (e.g.
