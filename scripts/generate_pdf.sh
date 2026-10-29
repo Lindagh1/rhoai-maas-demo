@@ -74,9 +74,7 @@ PY
 }
 
 if [[ $# -eq 0 ]]; then
-  md_to_pdf docs/GUIDE-INSTALLATION-DEMO1.md docs/GUIDE-INSTALLATION-DEMO1.pdf
-  md_to_pdf docs/GUIDE-DEMO-LIVE.md docs/GUIDE-DEMO-LIVE.pdf
-  md_to_pdf docs/GUIDE-DEMO-LIVE-DEMO2.md docs/GUIDE-DEMO-LIVE-DEMO2.pdf
+  md_to_pdf GUIDE.md GUIDE.pdf
 else
   for f in "$@"; do
     md_to_pdf "$f"

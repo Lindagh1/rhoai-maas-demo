@@ -139,7 +139,7 @@ print(json.dumps({
     err "An external OIDC provider is configured that this script will NOT administer automatically"
     err "(not a sandbox-scoped in-cluster Keycloak — looks like shared/enterprise IdP infrastructure)."
     echo
-    echo "BLOCKED — manual procedure required. See docs/demo2/09-auth-oidc-entra.md for:"
+    echo "BLOCKED — manual procedure required. See GUIDE.md §11.5 for:"
     echo "  - how to request/create a non-admin test account in that external IdP,"
     echo "  - how group-claim mapping needs to be verified before MaaS subscriptions can target a Group,"
     echo "  - the architecture diagram for this path (not executed on this sandbox)."
@@ -224,7 +224,7 @@ case "$STRATEGY" in
     echo "      3. Click 'Display Token', then: KUBECONFIG=$DEMO2_USER_KUBECONFIG oc login --token=<token> --server=$SERVER --insecure-skip-tls-verify=true"
     echo "      4. Immediately revoke it afterwards with: KUBECONFIG=$DEMO2_USER_KUBECONFIG oc logout"
     echo "    This exact procedure has already been run once for this identity during development of this script,"
-    echo "    confirming real OAuth login succeeds and the account has zero elevated RBAC. See docs/demo2/01-environment-audit.md."
+    echo "    confirming real OAuth login succeeds and the account has zero elevated RBAC. See GUIDE.md."
     ;;
 esac
 

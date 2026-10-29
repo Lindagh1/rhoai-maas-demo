@@ -85,7 +85,7 @@ echo "--- Step 2: POST /v1/chat/completions (body-based routing) ---"
 # JSON>" string: an inline escaped-quote one-liner was found to get mangled
 # when typed/pasted in some terminals (e.g. a browser-based workbench
 # terminal), producing a malformed request and a misleading 404 — see
-# docs/demo2/05-troubleshooting.md. --http1.1 is also required when this
+# GUIDE.md §9. --http1.1 is also required when this
 # script runs from inside an in-cluster pod (e.g. a workbench), where
 # HTTP/2 to the external MaaS route was observed to hang/close with no
 # response; calls from outside the cluster work fine either way.

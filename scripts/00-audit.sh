@@ -27,7 +27,7 @@ run oc get nodes -o wide
 run oc get nodes -o custom-columns=NAME:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu,CPU:.status.allocatable.cpu,MEMORY:.status.allocatable.memory
 # GPU is a cluster-wide constrained resource: allocatable != free. Compute the
 # actually-schedulable headroom so the plan never assumes a model fits just
-# because a GPU exists on some node (see CURSOR_PROMPT_DEMO1.md Stage A).
+# because a GPU exists on some node (see GUIDE.md §9, "GPU déjà occupé").
 run bash -c '
   echo "Per-node nvidia.com/gpu allocated vs allocatable:"
   for n in $(oc get nodes -o jsonpath="{.items[*].metadata.name}"); do

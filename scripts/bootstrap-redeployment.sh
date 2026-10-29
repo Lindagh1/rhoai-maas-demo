@@ -7,7 +7,7 @@
 # existing, independently idempotent scripts in this repo -- it does not
 # duplicate their logic. Every step it calls is itself safe to re-run.
 #
-# What this script does NOT do, by design (see docs/REDEPLOYMENT.md):
+# What this script does NOT do, by design (see GUIDE.md §4 and §11.1):
 #   - It does not create the end-user's API keys (Scenario C) -- that is a
 #     genuine non-admin dashboard action, which is exactly the point of the
 #     demo and cannot be safely scripted (one-time secret reveal).
@@ -97,7 +97,7 @@ echo "=============================================="
 ok "Automated redeployment complete."
 echo "=============================================="
 echo
-echo "Remaining MANUAL steps (by design — see docs/REDEPLOYMENT.md):"
+echo "Remaining MANUAL steps (by design — see GUIDE.md §4 and §11.1):"
 echo
 echo "  1. Log in to the RHOAI dashboard as the demo end-user"
 echo "     (username: ${DEMO2_USER:-maas-demo2-user}; password in"
@@ -109,8 +109,8 @@ echo "  3. Capture both keys locally, without ever pasting them anywhere else:"
 echo "       make demo2-capture-keys"
 echo "  4. Verify everything is green:"
 echo "       make demo2-verify"
-echo "  5. (Optional, for Étape 3bis of the live guide) create a Workbench"
+echo "  5. (Optional, for the live demo's workbench step) create a Workbench"
 echo "     from the dashboard, then wire the captured key into it:"
 echo "       bash scripts/demo2/22-wire-workbench-api-key.sh <namespace> <notebook-name> secrets/demo2/${DEMO2_USER:-maas-demo2-user}.apikey"
 echo
-info "Full runbook: docs/REDEPLOYMENT.md"
+info "Full guide: GUIDE.md"

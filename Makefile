@@ -14,7 +14,7 @@
         pdf
 
 ## --- Demo 1: native llm-d + MaaS ---
-## See docs/GUIDE-INSTALLATION-DEMO1.md / docs/GUIDE-DEMO-LIVE.md
+## See GUIDE.md
 
 demo1-audit:
 	@bash scripts/00-audit.sh
@@ -52,16 +52,16 @@ demo1-cleanup:
 	@CONFIRM=$(CONFIRM) bash scripts/99-cleanup.sh
 
 demo1-pdf:
-	@bash scripts/generate_pdf.sh docs/GUIDE-INSTALLATION-DEMO1.md docs/GUIDE-DEMO-LIVE.md
+	@bash scripts/generate_pdf.sh GUIDE.md
 
 ## --- Demo 2: reproducible MaaS end-user journey ---
-## See docs/demo2/ and docs/GUIDE-DEMO-LIVE-DEMO2.md
+## See GUIDE.md
 ## All demo2-* targets are safe to re-run (idempotent) except
 ## demo2-cleanup / demo2-cleanup-access, which require CONFIRM=yes.
 
 # Read-only: detects which IdP strategy this sandbox uses (htpasswd /
 # in-cluster Keycloak / external OIDC such as Entra ID). Run this first
-# on any new sandbox. See docs/demo2/09-auth-oidc-entra.md.
+# on any new sandbox. See GUIDE.md §11.5.
 demo2-detect-idp:
 	@bash scripts/demo2/00-detect-identity-provider.sh
 
@@ -143,7 +143,7 @@ demo2-all: demo2-setup demo2-verify demo2-check-usage
 
 ## --- Shared ---
 
-# Regenerate all PDF guides (Demo 1 installation + Demo 1 live + Demo 2 live).
+# Regenerate the single PDF guide (GUIDE.md -> GUIDE.pdf).
 pdf:
 	@bash scripts/generate_pdf.sh
 

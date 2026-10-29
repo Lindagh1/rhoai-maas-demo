@@ -62,7 +62,6 @@ Pour une démo client claire et robuste :
 
 ## Références utiles
 
-- guide live : `docs/GUIDE-DEMO-LIVE-DEMO2.md`
-- reproduction sandbox neuve : `docs/demo2/06-new-sandbox-reproduction.md`
-- troubleshooting : `docs/demo2/05-troubleshooting.md`
-- matrice détaillée : `docs/demo2/04-test-scenarios.md`
+Ce document est l'annexe "preuves" de [`GUIDE.md`](GUIDE.md), le guide
+unique qui couvre installation, identifiants, démo live clic par clic,
+et dépannage.

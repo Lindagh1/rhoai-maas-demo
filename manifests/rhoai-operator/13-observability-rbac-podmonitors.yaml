@@ -32,7 +32,7 @@
 # (`authorized_calls_total`, `limited_calls_total`, `authorized_hits_total`)
 # do not carry a usable per-user label on this RHOAI 3.5.2 build, so the
 # dashboard's "Observe & Monitor -> Dashboard -> Usage" tab can still show
-# 0 even after real traffic. See docs/demo2/05-troubleshooting.md.
+# 0 even after real traffic. See GUIDE.md §9/§11.4.
 #
 # Idempotent: apply via `oc apply -f`, safe to re-run. Wired into
 # scripts/25-enable-observability.sh.

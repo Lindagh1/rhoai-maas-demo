@@ -2,7 +2,7 @@
 # A MaaSSubscription alone grants quota but NOT gateway access (users get
 # 403 Forbidden without this); a MaaSAuthPolicy alone grants gateway access
 # but NOT quota (users get 429 Too Many Requests without a subscription).
-# Both are required together — see docs/demo2/02-admin-runbook.md §2.
+# Both are required together — see GUIDE.md §2 (Démo live).
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSAuthPolicy
 metadata:
