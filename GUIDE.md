@@ -232,6 +232,135 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
         └─ Gateway ──────────────────── curl /v1/chat/completions → 200
 ```
 
+### Feuille de tournage
+
+À suivre dans l'ordre. Quand l'objet existe déjà, tu remplis le
+formulaire pour la caméra puis tu annules, et tu ouvres l'objet en
+place. Le seul bouton à valider vraiment pendant la prise est
+**Create API key**.
+
+Deux fenêtres avant d'enregistrer : admin dans la fenêtre normale,
+`demo-user` dans une navigation privée. Mot de passe, hors champ :
+
+```bash
+cat secrets/demo-user.password
+```
+
+Sur la page de login, choisis le fournisseur **HTPasswd** (celui affiché
+par `make govern-login`). Ne prends pas le fournisseur OpenID
+d'entreprise : `demo-user` n'y existe pas.
+
+| | |
+|---|---|
+| Console | `https://console-openshift-console.<domaine>` |
+| Dashboard | `https://rhods-dashboard-redhat-ods-applications.<domaine>` |
+| Inférence | `https://maas.apps.<domaine>` |
+
+**1. OpenShift — le modèle déjà déployé.** Compte admin. **Search** →
+`LLMInferenceService` → projet `maas-demo` → `demo-llm`. Onglet **YAML** :
+`kind: LLMInferenceService`, `spec.model.name` = `facebook/opt-125m`,
+`spec.model.uri` = `hf://sshleifer/tiny-gpt2`, gateway
+`maas-default-gateway`. Onglet **Details** : **Ready: True**.
+
+**2. Projet.** Dashboard admin → **Data Science Projects → Create
+project**. Remplis, puis **Cancel** :
+
+| Champ | Valeur |
+|---|---|
+| Name | `maas-demo` |
+| Description | `Demo MaaS — modèle publié et gouverné` |
+
+Ouvre ensuite le projet `maas-demo`.
+
+**3. Déploiement — montrer, ne pas créer.** Dans le projet → **Deploy
+model** (pas **Edit**).
+
+| Page | Champ | Valeur |
+|---|---|---|
+| 1 Model location | Model location | `URI` |
+| 1 | URI | `hf://sshleifer/tiny-gpt2` |
+| 1 | Name | `demo-llm` |
+| 2 | Distributed inference with llm-d | cochée |
+| 2 | Use legacy deployment method | décochée |
+| 3 Model availability | Publish as MaaS | cochée |
+
+**Cancel.** Ne clique pas **Deploy**. Résultat, juste après : **Gen AI
+studio → AI asset endpoints** → projet `maas-demo` → `demo-llm`.
+
+**4. Quota — le combien.** **Settings → MaaS governance → Subscriptions
+→ Create**. Remplis, puis **Cancel** :
+
+| Champ | Valeur |
+|---|---|
+| Name | `demo-quota` |
+| Priority | `10` |
+| Group | `demo-team` |
+| Model | `demo-llm` |
+| Namespace | `maas-demo` |
+| Token limit | `2000` |
+| Window | `1m` |
+
+Ouvre `demo-quota` : phase **Active**.
+
+**5. Accès — le qui.** **Authorization policies → Create**. Remplis,
+puis **Cancel** :
+
+| Champ | Valeur |
+|---|---|
+| Name | `demo-access` |
+| Group | `demo-team` |
+| Model | `demo-llm` (case cochée) |
+| Namespace | `maas-demo` |
+
+Ouvre `demo-access` : phase **Active**. Phrase : « Subscription =
+combien. Authorization policy = qui. Les deux ensemble. »
+
+**6. Utilisateur — les modèles qu'il voit.** Fenêtre privée, fournisseur
+HTPasswd, login `demo-user`. **Gen AI studio → API keys → Subscriptions**.
+Tu dois voir `demo-quota`, le modèle `demo-llm`, et **2,000 / 1 minute**.
+
+**7. Clé API — seul bouton à valider.** **Create API key** :
+
+| Champ | Valeur |
+|---|---|
+| Name | `maas_llm_demo` |
+| Subscription | `demo-quota` |
+| Expiration | le défaut, montre la date |
+
+**Create**. La valeur `sk-oai-...` ne s'affiche qu'une fois. Copie-la
+hors champ. `demo-low-quota` peut aussi apparaître : ne la prends que
+pour l'étape du 429.
+
+**8. Curl.** Dans un terminal, sans montrer la clé :
+
+```bash
+read -s KEY
+```
+
+Colle la clé, Entrée. Puis :
+
+```bash
+curl -sk --http1.1 -H "Authorization: Bearer $KEY" \
+  https://maas.apps.<domaine>/v1/models
+
+cat > /tmp/body.json << 'JSON'
+{"model":"publishers/maas-demo/models/facebook/opt-125m","messages":[{"role":"user","content":"hello"}],"max_tokens":30}
+JSON
+
+curl -sk --http1.1 \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/body.json \
+  https://maas.apps.<domaine>/v1/chat/completions
+```
+
+Attendu : `200`, un texte, et un bloc `usage` avec les tokens. Garde
+`--http1.1` et le fichier JSON.
+
+**9. Admin — observabilité.** Fenêtre admin → **Observe & Monitor →
+Dashboard → Models**. Montre les requêtes et les tokens après le curl.
+Si **Usage** est à 0, dis-le et reste sur **Models**.
+
 ---
 
 ### Étape 0 (optionnelle) — Sans accès, l'utilisateur ne peut rien faire
