@@ -8,7 +8,7 @@ metadata:
   name: cluster-monitoring-config
   namespace: openshift-monitoring
   labels:
-    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/part-of: maas-demo
 data:
   config.yaml: |
     enableUserWorkload: true

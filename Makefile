@@ -1,193 +1,68 @@
-## ============================================================================
-## Active demos — this is what you want
-## ============================================================================
+.PHONY: publish publish-verify publish-cleanup \
+        govern-login govern-user govern govern-setup govern-audit \
+        save-key govern-verify call show-denials usage check-key \
+        govern-cleanup pdf
 
-.PHONY: demo1-audit demo1-prereqs demo1-enable-maas demo1-enable-observability \
-        demo1-deploy-model \
-        demo1-publish demo1-verify demo1-verify-twice demo1-cleanup \
-        demo1-all demo1-pdf \
-        demo2-detect-idp demo2-create-identity demo2-grant-access \
-        demo2-setup demo2-audit demo2-capture-keys demo2-verify demo2-test-inference \
-        demo2-test-negative demo2-test-access demo2-test-rate-limit \
-        demo2-check-usage demo2-verify-key demo2-cleanup-access \
-        demo2-cleanup demo2-all \
-        pdf
-
-## --- Demo 1: native llm-d + MaaS ---
+## Publier — deploy an LLM and publish it on MaaS.
 ## See GUIDE.md
 
-demo1-audit:
-	@bash scripts/00-audit.sh
+publish:
+	@bash scripts/publish/00-audit.sh
+	@bash scripts/publish/10-prerequisites.sh
+	@bash scripts/publish/20-enable-platform.sh
+	@bash scripts/publish/25-observability.sh
+	@bash scripts/publish/30-deploy-llm.sh
+	@bash scripts/publish/40-publish.sh
+	@bash scripts/publish/50-verify.sh
+	@bash scripts/publish/50-verify.sh
 
-demo1-prereqs:
-	@bash scripts/10-prerequisites.sh
+publish-verify:
+	@bash scripts/publish/50-verify.sh
 
-demo1-enable-maas:
-	@bash scripts/20-enable-maas.sh
+# Requires CONFIRM=yes
+publish-cleanup:
+	@CONFIRM=$(CONFIRM) bash scripts/publish/99-cleanup.sh
 
-# Click-ops observability: "Observe & Monitor -> Dashboard" (Cluster / Models
-# tabs) natively in the OpenShift AI UI, backed by COO + OTel + Perses.
-demo1-enable-observability:
-	@bash scripts/25-enable-observability.sh
-
-demo1-deploy-model:
-	@bash scripts/30-deploy-native-model.sh
-
-demo1-publish:
-	@bash scripts/40-publish-maas.sh
-
-demo1-verify:
-	@bash scripts/50-verify.sh
-
-demo1-verify-twice:
-	@bash scripts/50-verify.sh && bash scripts/50-verify.sh
-
-# Full install from a fresh sandbox (requires prior `oc login`).
-# Includes observability so the RHOAI dashboard's Observe & Monitor tabs
-# are ready before Demo 2.
-demo1-all: demo1-audit demo1-prereqs demo1-enable-maas demo1-enable-observability demo1-deploy-model demo1-publish demo1-verify-twice
-
-# Requires CONFIRM=yes, e.g.: make demo1-cleanup CONFIRM=yes
-demo1-cleanup:
-	@CONFIRM=$(CONFIRM) bash scripts/99-cleanup.sh
-
-demo1-pdf:
-	@bash scripts/generate_pdf.sh GUIDE.md
-
-## --- Demo 2: reproducible MaaS end-user journey ---
+## Gouverner — who can call the model, and how many tokens.
 ## See GUIDE.md
-## All demo2-* targets are safe to re-run (idempotent) except
-## demo2-cleanup / demo2-cleanup-access, which require CONFIRM=yes.
 
-# Read-only: detects which IdP strategy this sandbox uses (htpasswd /
-# in-cluster Keycloak / external OIDC such as Entra ID). Run this first
-# on any new sandbox. See GUIDE.md §11.5.
-demo2-detect-idp:
-	@bash scripts/demo2/00-detect-identity-provider.sh
+govern-login:
+	@bash scripts/govern/00-detect-login.sh
 
-# Creates the non-admin test identity (maas-demo2-user) and group
-# (maas-demo2-developers), branching on the detected IdP strategy.
-# Refuses to mutate an external/enterprise OIDC provider automatically.
-demo2-create-identity:
-	@bash scripts/demo2/01-create-test-identity.sh
+govern-user:
+	@bash scripts/govern/01-create-user.sh
 
-# Admin path (Scenario B): creates/updates the MaaSSubscription(s) +
-# MaaSAuthPolicy granting maas-demo2-developers access to Demo 1's model.
-demo2-grant-access:
-	@bash scripts/demo2/10-admin-grant-access.sh
+govern:
+	@bash scripts/govern/10-grant.sh
 
-# Full environment setup from a fresh sandbox (identity + access).
-# Does NOT create API keys — that step is the real end-user dashboard
-# flow (Scenario C), which cannot be safely scripted (secret capture).
-demo2-setup: demo2-detect-idp demo2-create-identity demo2-grant-access
+govern-setup: govern-login govern-user govern
 
-# Read-only consolidated audit: IdP strategy, identity, governance
-# objects, model readiness, and which local secret files exist (never
-# their values). Safe to run anytime.
-demo2-audit:
-	@bash scripts/demo2/05-audit.sh
+govern-audit:
+	@bash scripts/govern/05-audit.sh
 
-# Consolidated post-setup verification: model Ready, governance objects
-# Active, and both known API keys (if captured) still return 200.
-demo2-verify:
-	@bash scripts/demo2/60-verify-all.sh
+save-key:
+	@bash scripts/govern/21-save-key.sh
 
-# Securely capture the two dashboard-created API keys into the expected
-# local secret files without echoing them to the terminal.
-demo2-capture-keys:
-	@bash scripts/demo2/21-capture-api-keys.sh
+govern-verify:
+	@bash scripts/govern/60-verify.sh
 
-# Scenario D: real OpenAI-compatible inference as maas-demo2-user.
-# Requires secrets/demo2/maas-demo2-user.apikey (create via dashboard,
-# Scenario C) or DEMO2_API_KEY / DEMO2_API_KEY_FILE.
-demo2-test-inference:
-	@bash scripts/demo2/20-test-inference.sh
+call:
+	@bash scripts/govern/20-call.sh
 
-# Scenario E: negative tests (403 no AuthPolicy, 403 no subscription,
-# 429 rate-limit on the isolated 50-tokens/1m subscription). Mutates and
-# always restores the governance objects (safe, bounded request count).
-demo2-test-negative:
-	@bash scripts/demo2/40-test-negative.sh
+show-denials:
+	@bash scripts/govern/40-show-denials.sh
 
-# Aliases for demo2-test-negative, matching the individual Scenario E
-# sub-checks it performs (access-denial vs rate-limit specifically).
-demo2-test-access: demo2-test-negative
-demo2-test-rate-limit: demo2-test-negative
+usage:
+	@bash scripts/govern/50-usage.sh
 
-# Scenario F: usage visibility, admin (Limitador Prometheus metrics) vs
-# non-admin (dashboard Subscriptions tab). Read-only, no secrets.
-demo2-check-usage:
-	@bash scripts/demo2/50-check-usage-visibility.sh
+#   make check-key KEYFILE=secrets/demo-user.apikey
+#   EXPECT=revoked make check-key KEYFILE=secrets/demo-user.apikey
+check-key:
+	@bash scripts/govern/30-check-key.sh $(KEYFILE) $(EXPECT)
 
-# Reusable, secret-safe key health check. Usage:
-#   make demo2-verify-key KEYFILE=secrets/demo2/maas-demo2-user.apikey
-#   EXPECT=revoked make demo2-verify-key KEYFILE=secrets/demo2/maas-demo2-user.apikey
-demo2-verify-key:
-	@bash scripts/demo2/30-verify-key-status.sh $(KEYFILE) $(EXPECT)
+# Requires CONFIRM=yes
+govern-cleanup:
+	@CONFIRM=$(CONFIRM) bash scripts/govern/99-cleanup.sh
 
-# Scenario-cleanup for the admin-granted governance objects ONLY
-# (MaaSSubscription(s) + MaaSAuthPolicy). Leaves identity/group/model
-# untouched. Requires explicit confirmation:
-#   make demo2-cleanup-access CONFIRM=yes
-demo2-cleanup-access:
-	@CONFIRM=$(CONFIRM) bash scripts/demo2/99-cleanup-access.sh
-
-# Alias matching the task spec's exact required target name:
-#   make demo2-cleanup CONFIRM=yes
-demo2-cleanup: demo2-cleanup-access
-
-# Full reproducible run-through on a fresh sandbox, up to (but not
-# including) the manual dashboard steps (Scenario C key creation) and
-# destructive cleanup. Requires prior `oc login` as a cluster-admin.
-demo2-all: demo2-setup demo2-verify demo2-check-usage
-
-## --- Shared ---
-
-# Regenerate the single PDF guide (GUIDE.md -> GUIDE.pdf).
 pdf:
 	@bash scripts/generate_pdf.sh
-
-## ============================================================================
-## Historical / other sandbox demos (not part of Demo 1 or Demo 2)
-## Kept for traceability — see README.md "Structure du dépôt" table.
-## ============================================================================
-
-.PHONY: install-rhoai-operator install-vscode-workbench-demo \
-        install-fraud-detection-tutorial preflight bootstrap status \
-        infer demo-auth demo-rate-limit validate test-idempotency cleanup
-
-install-rhoai-operator:
-	@./scripts/install-rhoai-operator.sh
-
-install-vscode-workbench-demo:
-	@./scripts/install-vscode-workbench-demo.sh
-
-install-fraud-detection-tutorial:
-	@./scripts/install-fraud-detection-tutorial.sh
-
-preflight:
-	@./scripts/preflight.sh
-
-bootstrap:
-	@./scripts/bootstrap.sh
-
-status:
-	@./scripts/status.sh
-
-infer:
-	@./scripts/infer.sh
-
-demo-auth:
-	@./scripts/demo-auth.sh
-
-demo-rate-limit:
-	@./scripts/demo-rate-limit.sh
-
-validate:
-	@./scripts/validate.sh
-
-test-idempotency:
-	@./scripts/test-idempotency.sh
-
-cleanup:
-	@./scripts/cleanup.sh

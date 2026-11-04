@@ -1,0 +1,22 @@
+# Gouverner — authorization policy matching the subscription above.
+# A MaaSSubscription alone grants quota but NOT gateway access (users get
+# 403 Forbidden without this); a MaaSAuthPolicy alone grants gateway access
+# but NOT quota (users get 429 Too Many Requests without a subscription).
+# Both are required together — see GUIDE.md §2 (Démo live).
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: demo-access
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: maas-demo
+  annotations:
+    openshift.io/description: "Gouverner — authorizes group demo-team to reach demo-llm (maas-demo) through the MaaS gateway. Matches demo-quota's groups and models exactly."
+spec:
+  subjects:
+    groups:
+      - name: demo-team
+    users: []
+  modelRefs:
+    - name: demo-llm
+      namespace: maas-demo

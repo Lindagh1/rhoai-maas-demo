@@ -1,0 +1,30 @@
+# Gouverner — Scenario E / Test 3: a SEPARATE, deliberately low-quota
+# subscription dedicated to the rate-limit test. Kept apart from
+# demo-quota (the one used for the rest of the demo) so that
+# triggering 429s here never affects the main happy-path walkthrough.
+#
+# Same group/model as the main subscription, lower priority: by default the
+# highest-priority subscription is auto-selected, so the rate-limit test
+# script must explicitly request THIS subscription by name when creating its
+# test API key (see scripts/govern/40-show-denials.sh).
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSSubscription
+metadata:
+  name: demo-low-quota
+  namespace: models-as-a-service
+  labels:
+    app.kubernetes.io/part-of: maas-demo
+  annotations:
+    openshift.io/description: "Gouverner — Scenario E Test 3 only. Deliberately tiny token limit to safely trigger HTTP 429 with a bounded number of requests. Never used for the main demo pitch."
+spec:
+  owner:
+    groups:
+      - name: demo-team
+    users: []
+  priority: 1
+  modelRefs:
+    - name: demo-llm
+      namespace: maas-demo
+      tokenRateLimits:
+        - limit: 50
+          window: 1m

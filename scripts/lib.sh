@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers sourced by every Demo 1 script.
+# Shared helpers sourced by every Publier script.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

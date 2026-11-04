@@ -9,7 +9,7 @@ metadata:
   name: authorino-authorino-authorization
   namespace: kuadrant-system
   labels:
-    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/part-of: maas-demo
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: authorino-server-cert
 spec:

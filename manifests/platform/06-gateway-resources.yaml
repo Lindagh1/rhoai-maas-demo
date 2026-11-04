@@ -15,7 +15,7 @@ metadata:
   name: maas-gateway-options
   namespace: openshift-ingress
   labels:
-    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/part-of: maas-demo
 data:
   deployment: |
     spec:

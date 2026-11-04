@@ -7,7 +7,7 @@ metadata:
   name: kuadrant
   namespace: kuadrant-system
   labels:
-    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/part-of: maas-demo
 spec:
   # Observability lets Kuadrant create its own Limitador/Authorino
   # PodMonitor/ServiceMonitor resources, scraped by User Workload Monitoring.

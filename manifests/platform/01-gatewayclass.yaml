@@ -12,6 +12,6 @@ kind: GatewayClass
 metadata:
   name: openshift-default
   labels:
-    app.kubernetes.io/part-of: rhoai-maas-demo
+    app.kubernetes.io/part-of: maas-demo
 spec:
   controllerName: "openshift.io/gateway-controller/v1"

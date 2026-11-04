@@ -1,58 +1,49 @@
-# RHOAI 3.5 MaaS — Demo 1 (natif llm-d) + Demo 2 (parcours utilisateur)
+# RHOAI 3.5 MaaS — publier un modèle, puis gouverner qui l'appelle
 
-Démos **reproductibles** pour sandboxes Red Hat OpenShift AI 3.5 :
+Deux gestes, et seulement ceux-là :
 
 ```text
-Demo 1 : LLMInferenceService (llm-d) → MaaSModelRef → modèle publié dans MaaS
-Demo 2 : abonnements MaaS → clé API utilisateur → inférence gouvernée (quotas, 403/429, révocation)
+Publier   : déployer demo-llm et le publier dans MaaS
+Gouverner : demo-team peut l'appeler, demo-quota dit combien de tokens
 ```
 
-## 📘 Le guide — un seul fichier, tout est dedans
+Le mode d'emploi complet est [`GUIDE.md`](GUIDE.md) (le PDF se régénère avec `make pdf`).
 
-**[`GUIDE.md`](GUIDE.md)** (ou son [PDF](GUIDE.pdf)) couvre **tout le
-cycle**, dans l'ordre : prérequis → installation sur sandbox neuve →
-où trouver les identifiants (admin, `maas-demo2-user`, clés API) →
-démo live clic par clic (console + dashboard) → aide-mémoire →
-dépannage → nettoyage → annexe technique.
+## Les noms
 
-C'est le seul document à ouvrir. Pas besoin de deviner où chercher.
+| Rôle | Nom | Fichier |
+|---|---|---|
+| Projet | `maas-demo` | `manifests/model/namespace.yaml` |
+| Modèle | `demo-llm` | `manifests/model/llm.yaml` |
+| Publication MaaS | `demo-llm` | `manifests/publish/model-ref.yaml` |
+| Groupe | `demo-team` | créé par `scripts/govern/01-create-user.sh` |
+| Utilisateur | `demo-user` | idem, mot de passe dans `secrets/demo-user.password` |
+| Quota (combien) | `demo-quota` | `manifests/govern/quota.yaml` |
+| Accès (qui) | `demo-access` | `manifests/govern/access.yaml` |
+| Petit quota (429) | `demo-low-quota` | `manifests/govern/low-quota.yaml` |
 
-Pour la matrice complète des scénarios testés (preuves PASS/BLOCKED/FAIL
-par rapport à la documentation officielle) : [`DEMO2-RESULTS.md`](DEMO2-RESULTS.md).
+`MaaSSubscription` = combien. `MaaSAuthPolicy` = qui. Les deux sont nécessaires.
 
-## Démarrage ultra-rapide
+## Démarrer
 
 ```bash
 oc login --server=<API> --token=<TOKEN>
 git clone https://github.com/Lindagh1/rhoai-maas-demo.git && cd rhoai-maas-demo
-bash scripts/bootstrap-redeployment.sh
+bash scripts/bootstrap.sh
 ```
 
-Puis ouvrir [`GUIDE.md`](GUIDE.md) et suivre la section 3 (identifiants)
-et 4 (clés API) pour les 2 étapes manuelles restantes.
+Puis [`GUIDE.md`](GUIDE.md), section 3 (le mot de passe) et section 4 (les clés API).
 
----
-
-## Structure du dépôt
-
-Ce dépôt a accumulé plusieurs démos RHOAI construites sur les mêmes sandboxes. **Si tu cherches la Demo 1/Demo 2 MaaS, tout est dans [`GUIDE.md`](GUIDE.md) + `scripts/00-`→`99-`, `scripts/demo2/`, `manifests/`.**
-
-| Dossier / fichier | Démo | Statut |
-|---|---|---|
-| `GUIDE.md`, `DEMO2-RESULTS.md`, `scripts/00-audit.sh` … `99-cleanup.sh`, `scripts/demo2/`, `manifests/platform/`, `manifests/model/`, `manifests/rhoai-operator/`, `manifests/demo2/`, `manifests/maas/maas-model-ref.yaml` | **Demo 1 + Demo 2 — MaaS natif llm-d + gouvernance** | Actif, maintenu |
-| `manifests/maas/maas-subscription.yaml`, `manifests/maas/maas-auth-policy.yaml` | Gouvernance publique `system:authenticated` de l'ancien sandbox `t5lkh` | **Orphelin — non appliqué sur cette sandbox, ne pas réutiliser.** La gouvernance réelle et active passe par `manifests/demo2/10-*`/`11-*`/`12-*`, scopée au groupe `maas-demo2-developers`. |
-| `scripts/install-rhoai-operator.sh`, `scripts/bootstrap.sh`, `scripts/preflight.sh`, `scripts/status.sh`, `scripts/api_key.sh`, `scripts/demo-auth.sh`, `scripts/demo-rate-limit.sh`, `scripts/validate.sh`, `scripts/test-idempotency.sh`, `scripts/cleanup.sh` | Installation RHOAI de base (ancien sandbox `t5lkh`) | Historique |
-| `openshift-ai-demo/`, `manifests/fraud-detection-tutorial/`, `manifests/workbench-vscode-demo/` | Knowledge Advisor (RAG) / fraud-detection / workbench VS Code | Historique, autres démos |
-
-Les manifests/scripts « historiques » et « orphelins » restent dans le dépôt pour traçabilité, mais **ne font pas partie du parcours Demo 1/Demo 2** décrit dans `GUIDE.md`, et ne doivent pas être appliqués sur une nouvelle sandbox.
-
-Régénérer le PDF du guide localement : `bash scripts/generate_pdf.sh`
-
----
+```bash
+make publish          # le modèle, seulement
+make govern-setup     # l'utilisateur, le quota, l'accès
+make save-key         # après avoir créé les clés dans le dashboard
+make call             # un curl d'inférence
+make show-denials     # 403 sans accès, 403 sans quota, 429 quota épuisé
+```
 
 ## Sécurité
 
-- Les secrets sont générés à l'installation — **jamais** commités.
+- Les secrets sont générés à l'installation et ne sont jamais commités (`secrets/` est ignoré).
 - Ne colle pas de token OpenShift dans le dépôt ni dans un chat.
-- Les Gateways partagés et les modèles legacy existants ne sont pas écrasés.
-- Pas de bascule silencieuse vers le Technology Preview vLLM-on-MaaS.
+- Les Gateways partagés et les modèles déjà présents sur la sandbox ne sont pas écrasés.
