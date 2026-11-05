@@ -1,0 +1,74 @@
+# CPU-only llm-d inference simulator for Publier native path.
+# Proves LLMInferenceService (llm-d) → MaaS without consuming the single L4 GPU
+# currently held by my-first-model/llama-32-3b-instruct.
+#
+# Validated against this cluster: serving.kserve.io/v1alpha2 (server dry-run).
+# Image: ghcr.io/llm-d/llm-d-inference-sim (synthetic completions; no real weights).
+apiVersion: serving.kserve.io/v1alpha2
+kind: LLMInferenceService
+metadata:
+  name: demo-llm
+  namespace: maas-demo
+  labels:
+    app.kubernetes.io/part-of: maas-demo
+    app.kubernetes.io/component: published-llm
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/genai-asset: "true"
+  annotations:
+    opendatahub.io/model-type: "generative"
+    openshift.io/display-name: "demo-llm"
+    openshift.io/description: "CPU simulator for MaaS demo (llm-d-inference-sim)"
+spec:
+  model:
+    uri: hf://sshleifer/tiny-gpt2
+    name: facebook/opt-125m
+  replicas: 1
+  router:
+    route: {}
+    gateway:
+      refs:
+        - name: maas-default-gateway
+          namespace: openshift-ingress
+  template:
+    containers:
+      - name: main
+        image: "ghcr.io/llm-d/llm-d-inference-sim:v0.7.1"
+        imagePullPolicy: IfNotPresent
+        command: ["/app/llm-d-inference-sim"]
+        args:
+          - --port
+          - "8000"
+          - --model
+          - facebook/opt-125m
+          - --mode
+          - random
+          - --ssl-certfile
+          - /var/run/kserve/tls/tls.crt
+          - --ssl-keyfile
+          - /var/run/kserve/tls/tls.key
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef: {apiVersion: v1, fieldPath: metadata.name}
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef: {apiVersion: v1, fieldPath: metadata.namespace}
+        ports:
+          - name: https
+            containerPort: 8000
+            protocol: TCP
+        livenessProbe:
+          httpGet: {path: /health, port: https, scheme: HTTPS}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet: {path: /ready, port: https, scheme: HTTPS}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi

@@ -63,7 +63,7 @@ dry_run_file() {
   if out=$(oc apply --dry-run=server -f "$file" 2>&1); then
     ok "dry-run OK: $file"
   else
-    if echo "$out" | grep -qiE 'no matches for kind|the server doesn.t have a resource type|could not find the requested resource'; then
+    if echo "$out" | grep -qiE 'no matches for kind|the server doesn.t have a resource type|could not find the requested resource|namespaces .* not found'; then
       warn "SKIP (CRD/API not installed yet on this cluster): $file"
       SKIP=1
     else
@@ -105,6 +105,8 @@ done
 # Publier — model + MaaS publication
 [[ -f manifests/model/namespace.yaml ]] && dry_run_file manifests/model/namespace.yaml
 dry_run_file manifests/model/llm.yaml
+dry_run_file manifests/model/hardware-profile.yaml
+dry_run_file manifests/observability/demo-dashboard.json
 dry_run_file manifests/publish/model-ref.yaml
 
 # Observability (COO + OTel operator install + RBAC/PodMonitor drift fix)

@@ -20,3 +20,6 @@ docs/_*.txt
 docs/_*.yaml
 docs/_*.json
 *.log
+
+__pycache__/
+evidence/legacy-before.json

@@ -14,7 +14,6 @@ publish:
 	@bash scripts/publish/30-deploy-llm.sh
 	@bash scripts/publish/40-publish.sh
 	@bash scripts/publish/50-verify.sh
-	@bash scripts/publish/50-verify.sh
 
 publish-verify:
 	@bash scripts/publish/50-verify.sh
@@ -66,3 +65,19 @@ govern-cleanup:
 
 pdf:
 	@bash scripts/generate_pdf.sh
+
+.PHONY: prepare demo validate traffic quota-test live-reset endpoints
+prepare:
+	@bash scripts/prepare.sh
+demo:
+	@bash scripts/bootstrap.sh
+validate:
+	@bash scripts/validate.sh
+traffic:
+	@bash scripts/govern/20-call.sh --count 5 --output evidence/traffic.json
+quota-test:
+	@bash scripts/govern/20-call.sh --key-file secrets/demo-user.ratelimit.apikey --count 5 --expect-429 --output evidence/quota.json
+live-reset:
+	@CONFIRM=$(CONFIRM) bash scripts/reset-live.sh
+endpoints:
+	@bash scripts/endpoints.sh

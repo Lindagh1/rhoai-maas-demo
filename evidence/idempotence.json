@@ -1,0 +1,57 @@
+{
+  "deployments_unchanged": true,
+  "before": {
+    "kuadrant-system/authorino": {
+      "uid": "dcd13e87-0160-45ef-a90e-ae8d3bfe94db",
+      "generation": 4
+    },
+    "maas-demo/demo-llm-kserve": {
+      "uid": "af019f71-8979-488b-85bd-e286ddbd107f",
+      "generation": 2
+    },
+    "openshift-ingress/maas-default-gateway-openshift-default": {
+      "uid": "e9791946-895f-4f86-aced-3cec8e96b3ea",
+      "generation": 1
+    },
+    "redhat-ai-gateway-infra/maas-api": {
+      "uid": "5ea7cf89-5f88-44b8-b196-1217d1769dfb",
+      "generation": 2
+    },
+    "redhat-ods-applications/dashboard-operator": {
+      "uid": "1ca6f2bc-3817-4599-9a4a-6104ec73e9e7",
+      "generation": 4
+    },
+    "redhat-ods-applications/postgres": {
+      "uid": "4e6c4414-fe26-4f7c-ab9b-d080e4e65255",
+      "generation": 3
+    }
+  },
+  "after": {
+    "kuadrant-system/authorino": {
+      "uid": "dcd13e87-0160-45ef-a90e-ae8d3bfe94db",
+      "generation": 4
+    },
+    "maas-demo/demo-llm-kserve": {
+      "uid": "af019f71-8979-488b-85bd-e286ddbd107f",
+      "generation": 2
+    },
+    "openshift-ingress/maas-default-gateway-openshift-default": {
+      "uid": "e9791946-895f-4f86-aced-3cec8e96b3ea",
+      "generation": 1
+    },
+    "redhat-ai-gateway-infra/maas-api": {
+      "uid": "5ea7cf89-5f88-44b8-b196-1217d1769dfb",
+      "generation": 2
+    },
+    "redhat-ods-applications/dashboard-operator": {
+      "uid": "1ca6f2bc-3817-4599-9a4a-6104ec73e9e7",
+      "generation": 4
+    },
+    "redhat-ods-applications/postgres": {
+      "uid": "4e6c4414-fe26-4f7c-ab9b-d080e4e65255",
+      "generation": 3
+    }
+  },
+  "model_pod_preserved": true,
+  "database_credentials_preserved": true
+}

@@ -141,7 +141,7 @@ gen_password() {
 gen_apr1_hash() {
   local password="$1"
   if command -v openssl >/dev/null 2>&1; then
-    openssl passwd -apr1 "$password"
+    printf '%s\n' "$password" | openssl passwd -apr1 -stdin
     return
   fi
   if command -v htpasswd >/dev/null 2>&1; then

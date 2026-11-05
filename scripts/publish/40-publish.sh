@@ -25,13 +25,17 @@ if ! oc get llminferenceservice demo-llm -n maas-demo &>/dev/null; then
   exit 1
 fi
 
+PUBLISH_MANIFEST=manifests/publish/model-ref.yaml
+if [[ "${MODEL_MODE:-real}" == simulator ]]; then
+  PUBLISH_MANIFEST=manifests/publish/model-ref-simulator.yaml
+fi
 info "Validating MaaSModelRef schema"
 oc explain maasmodelref.spec.modelRef >/dev/null
-oc apply --server-side=true --dry-run=server -f manifests/publish/model-ref.yaml >/dev/null
+oc apply --server-side=true --dry-run=server -f "$PUBLISH_MANIFEST" >/dev/null
 ok "Server dry-run accepted"
 
 info "Applying MaaSModelRef (declarative publication)"
-oc apply --server-side=true -f manifests/publish/model-ref.yaml
+oc apply --server-side=true -f "$PUBLISH_MANIFEST"
 
 info "Waiting for MaaSModelRef RuntimeReady (backend healthy) — up to 3 min..."
 # NOTE: on RHOAI 3.5.2, MaaSModelRef.status.phase only reaches "Ready" once a

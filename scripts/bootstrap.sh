@@ -7,10 +7,10 @@
 # existing, independently idempotent scripts in this repo -- it does not
 # duplicate their logic. Every step it calls is itself safe to re-run.
 #
-# What this script does NOT do, by design (see GUIDE.md §4 and §11.1):
+# What this script does NOT do, by design (see GUIDE.md sections 4 et 6):
 #   - It does not create the end-user's API keys (Scenario C) -- that is a
 #     genuine non-admin dashboard action, which is exactly the point of the
-#     demo and cannot be safely scripted (one-time secret reveal).
+#     demo. API-based key creation is also possible with the user identity.
 #   - It does not create a Workbench (Notebook) from scratch -- RHOAI's
 #     dashboard-managed Notebook wiring (image, PVC, kube-rbac-proxy
 #     sidecar, ServiceAccount, HTTPRoute) was never verified end-to-end
@@ -83,7 +83,6 @@ if [[ "$RUN_DEMO1" == "1" ]]; then
   run_step "Publier — deploy native model"        bash scripts/publish/30-deploy-llm.sh
   run_step "Publier — publish to MaaS"            bash scripts/publish/40-publish.sh
   run_step "Publier — verify (1st pass)"          bash scripts/publish/50-verify.sh
-  run_step "Publier — verify (2nd pass, idempotence)" bash scripts/publish/50-verify.sh
 fi
 
 if [[ "$RUN_DEMO2" == "1" ]]; then
@@ -97,7 +96,7 @@ echo "=============================================="
 ok "Automated redeployment complete."
 echo "=============================================="
 echo
-echo "Remaining MANUAL steps (by design — see GUIDE.md §4 and §11.1):"
+echo "Remaining MANUAL steps (by design — see GUIDE.md sections 4 et 6):"
 echo
 echo "  1. Log in to the RHOAI dashboard as the demo end-user"
 echo "     (username: ${DEMO_USER:-demo-user}; password in"

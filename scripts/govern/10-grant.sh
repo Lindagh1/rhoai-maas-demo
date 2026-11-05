@@ -100,23 +100,6 @@ if oc get maasauthpolicy demo-quota-policy -n models-as-a-service >/dev/null 2>&
   warn "Found leftover duplicate MaaSAuthPolicy/demo-quota-policy. It is harmless but was created accidentally by the dashboard UI in a previous run; delete it for a cleaner demo state."
 fi
 
-# The dashboard's maas-ui discovers the public MaaS hostname and calls it with
-# Go's HTTP/2 client. On this single-node sandbox the gateway's HTTP/2
-# handshake is reset (the UI then shows "Error loading API keys ... EOF").
-# HTTP/1.1 to the same URL works. GODEBUG=http2client=0 forces that client
-# onto HTTP/1.1. The Deployment is operator-owned; re-apply if a reconcile
-# drops the variable.
-if oc get deploy maas-ui -n redhat-ods-applications &>/dev/null; then
-  CURRENT_GODEBUG=$(oc set env deploy/maas-ui -n redhat-ods-applications --list 2>/dev/null | awk -F= '/^GODEBUG=/{print $2}')
-  if [[ "$CURRENT_GODEBUG" == *http2client=0* ]]; then
-    ok "maas-ui already uses HTTP/1.1 (GODEBUG=http2client=0)"
-  else
-    info "Forcing maas-ui onto HTTP/1.1 so the API keys page can reach the gateway"
-    oc set env deploy/maas-ui -n redhat-ods-applications GODEBUG=http2client=0 >/dev/null
-    oc rollout status deploy/maas-ui -n redhat-ods-applications --timeout=180s >/dev/null
-    ok "maas-ui restarted with GODEBUG=http2client=0"
-  fi
-fi
 
 echo
 ok "Scenario B (declarative) complete. MaaSModelRef should now reach Ready=True (governance pairing satisfied)."

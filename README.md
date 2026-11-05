@@ -1,54 +1,48 @@
-# RHOAI 3.5 MaaS — publier un modèle, puis gouverner qui l'appelle
+# OpenShift AI MaaS : du modèle Hugging Face à l'appel API
 
-Démo généraliste.
+**L'histoire :** l'administrateur met un assistant à disposition d'une équipe Data Science. Il déploie ses poids depuis Hugging Face, publie le modèle dans MaaS, définit une souscription et une autorisation. Le data scientist crée sa propre clé, appelle le modèle et l'administrateur voit les tokens consommés.
 
-**Pas à pas de la démo (champs, curl, observabilité) :**
-[`GUIDE.md`](GUIDE.md), section **Feuille de tournage**.
+- [Guide de préparation et de reconstruction](GUIDE.md)
+- [Feuille de démonstration : clics, champs, phrases à dire](FEUILLE-DEMO.md)
+- [Validation et limites observées](docs/VALIDATION.md)
 
-Deux gestes, et seulement ceux-là :
+## Deux façons de démarrer
 
-```text
-Publier   : déployer demo-llm et le publier dans MaaS
-Gouverner : demo-team peut l'appeler, demo-quota dit combien de tokens
-```
-
-Le mode d'emploi complet est [`GUIDE.md`](GUIDE.md) (le PDF se régénère avec `make pdf`).
-
-## Les noms
-
-| Rôle | Nom | Fichier |
-|---|---|---|
-| Projet | `maas-demo` | `manifests/model/namespace.yaml` |
-| Modèle | `demo-llm` | `manifests/model/llm.yaml` |
-| Publication MaaS | `demo-llm` | `manifests/publish/model-ref.yaml` |
-| Groupe | `demo-team` | créé par `scripts/govern/01-create-user.sh` |
-| Utilisateur | `demo-user` | idem, mot de passe : `cat /home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password` |
-| Quota (combien) | `demo-quota` | `manifests/govern/quota.yaml` |
-| Accès (qui) | `demo-access` | `manifests/govern/access.yaml` |
-| Petit quota (429) | `demo-low-quota` | `manifests/govern/low-quota.yaml` |
-
-`MaaSSubscription` = combien. `MaaSAuthPolicy` = qui. Les deux sont nécessaires.
-
-## Démarrer
+Après connexion `oc login` en administrateur sur la sandbox cible :
 
 ```bash
-oc login --server=<API> --token=<TOKEN>
-git clone https://github.com/Lindagh1/rhoai-maas-demo.git && cd rhoai-maas-demo
-bash scripts/bootstrap.sh
+make prepare   # plateforme + identité ; création du projet/modèle en direct
+# OU
+make demo      # reconstruction complète pour préparer une répétition
+make endpoints # liens de CETTE sandbox
 ```
 
-Puis [`GUIDE.md`](GUIDE.md), section 3 (le mot de passe) et section 4 (les clés API).
+Le modèle par défaut est **Qwen/Qwen2.5-0.5B-Instruct**, réellement téléchargé depuis Hugging Face et servi par vLLM sur **1 GPU**. La source Hugging Face héberge les poids ; l'inférence s'exécute dans OpenShift. Aucun jeton Hugging Face n'est nécessaire pour ce modèle public.
+
+`MODEL_MODE=simulator make demo` est une répétition CPU explicitement simulée. Elle ne démontre ni le chargement de vrais poids ni la qualité d'un LLM.
+
+## Les noms à retenir
+
+- Projet `maas-demo` : l'espace de la démonstration.
+- Déploiement et publication `demo-llm` : l'assistant partagé.
+- Groupe `demo-team` et compte `demo-user` : les consommateurs.
+- Souscription `demo-quota` : les modèles disponibles et la limite de 2 000 tokens/minute.
+- Autorisation `demo-access` : le droit d'atteindre le modèle.
+- Souscription optionnelle `demo-low-quota` : 50 tokens/minute pour montrer le 429.
+
+Les identifiants restent stables pour conserver les clés existantes. Les libellés visibles expliquent le rôle de chaque objet.
+
+## Prouver que cela fonctionne
+
+Créer une clé en tant que `demo-user` dans **Gen AI studio → API keys**, puis `make save-key` pour la stocker localement.
 
 ```bash
-make publish          # le modèle, seulement
-make govern-setup     # l'utilisateur, le quota, l'accès
-make save-key         # après avoir créé les clés dans le dashboard
-make call             # un curl d'inférence
-make show-denials     # 403 sans accès, 403 sans quota, 429 quota épuisé
+make call         # réponse réelle et usage.prompt_tokens/completion_tokens/total_tokens
+make traffic      # cinq appels bornés
+make quota-test   # clé séparée du petit quota ; attend un 429
+make usage        # compteurs réels côté admin
 ```
 
-## Sécurité
+Le client `scripts/client.py` fonctionne sans `oc` et sans droits admin lorsqu'on lui fournit `--url`. Les scripts de préparation utilisent `oc` pour découvrir le domaine de la nouvelle sandbox. Aucun domaine ni secret de sandbox n'est enregistré dans les manifestes.
 
-- Les secrets sont générés à l'installation et ne sont jamais commités (`secrets/` est ignoré).
-- Ne colle pas de token OpenShift dans le dépôt ni dans un chat.
-- Les Gateways partagés et les modèles déjà présents sur la sandbox ne sont pas écrasés.
+La compatibilité cible est **RHOAI 3.5 / OpenShift 4.20**, testée sur 3.5.2 / 4.20.42. Voir le guide pour les prérequis et la différence entre une relance sur cette sandbox et une installation sur une sandbox neuve.

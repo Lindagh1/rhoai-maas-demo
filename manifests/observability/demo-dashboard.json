@@ -1,0 +1,240 @@
+{
+  "apiVersion": "perses.dev/v1alpha2",
+  "kind": "PersesDashboard",
+  "metadata": {
+    "name": "dashboard-5-maas-demo-admin",
+    "namespace": "redhat-ods-monitoring",
+    "labels": {
+      "app.kubernetes.io/part-of": "maas-demo",
+      "app.kubernetes.io/component": "perses"
+    }
+  },
+  "spec": {
+    "config": {
+      "display": {
+        "name": "MaaS démo",
+        "description": "Compteurs réels par souscription et modèle. Totaux depuis le redémarrage de Limitador ; pas une facture."
+      },
+      "duration": "1h",
+      "layouts": [
+        {
+          "kind": "Grid",
+          "spec": {
+            "display": {
+              "title": "Consommation MaaS réelle",
+              "collapse": {
+                "open": true
+              }
+            },
+            "items": [
+              {
+                "content": {
+                  "$ref": "#/spec/panels/totalTokens"
+                },
+                "x": 0,
+                "y": 0,
+                "width": 8,
+                "height": 5
+              },
+              {
+                "content": {
+                  "$ref": "#/spec/panels/totalRequests"
+                },
+                "x": 8,
+                "y": 0,
+                "width": 8,
+                "height": 5
+              },
+              {
+                "content": {
+                  "$ref": "#/spec/panels/totalRateLimited"
+                },
+                "x": 16,
+                "y": 0,
+                "width": 8,
+                "height": 5
+              },
+              {
+                "content": {
+                  "$ref": "#/spec/panels/tokenConsumptionOverTime"
+                },
+                "x": 0,
+                "y": 5,
+                "width": 24,
+                "height": 10
+              }
+            ]
+          }
+        }
+      ],
+      "panels": {
+        "totalTokens": {
+          "kind": "Panel",
+          "spec": {
+            "display": {
+              "name": "Tokens consommés",
+              "description": "Source : Limitador, métriques collectées par Prometheus. Les compteurs sont réinitialisés au redémarrage."
+            },
+            "plugin": {
+              "kind": "StatChart",
+              "spec": {
+                "calculation": "last",
+                "format": {
+                  "decimalPlaces": 0,
+                  "shortValues": true,
+                  "unit": "decimal"
+                }
+              }
+            },
+            "queries": [
+              {
+                "kind": "TimeSeriesQuery",
+                "spec": {
+                  "plugin": {
+                    "kind": "PrometheusTimeSeriesQuery",
+                    "spec": {
+                      "datasource": {
+                        "kind": "PrometheusDatasource",
+                        "name": "data-science-prometheus-datasource"
+                      },
+                      "query": "sum(authorized_hits{subscription=\"demo-quota\",limitador_namespace=\"maas-demo/demo-llm-kserve-route\"})",
+                      "seriesNameFormat": "Tokens"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "totalRequests": {
+          "kind": "Panel",
+          "spec": {
+            "display": {
+              "name": "Appels autorisés",
+              "description": "Source : Limitador, métriques collectées par Prometheus. Les compteurs sont réinitialisés au redémarrage."
+            },
+            "plugin": {
+              "kind": "StatChart",
+              "spec": {
+                "calculation": "last",
+                "format": {
+                  "decimalPlaces": 0,
+                  "shortValues": true,
+                  "unit": "decimal"
+                }
+              }
+            },
+            "queries": [
+              {
+                "kind": "TimeSeriesQuery",
+                "spec": {
+                  "plugin": {
+                    "kind": "PrometheusTimeSeriesQuery",
+                    "spec": {
+                      "datasource": {
+                        "kind": "PrometheusDatasource",
+                        "name": "data-science-prometheus-datasource"
+                      },
+                      "query": "sum(authorized_calls{subscription=\"demo-quota\",limitador_namespace=\"maas-demo/demo-llm-kserve-route\"})",
+                      "seriesNameFormat": "Requests"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "totalRateLimited": {
+          "kind": "Panel",
+          "spec": {
+            "display": {
+              "name": "Appels limités (petit quota)",
+              "description": "Source : Limitador, métriques collectées par Prometheus. Les compteurs sont réinitialisés au redémarrage."
+            },
+            "plugin": {
+              "kind": "StatChart",
+              "spec": {
+                "calculation": "last",
+                "format": {
+                  "decimalPlaces": 0,
+                  "shortValues": true,
+                  "unit": "decimal"
+                }
+              }
+            },
+            "queries": [
+              {
+                "kind": "TimeSeriesQuery",
+                "spec": {
+                  "plugin": {
+                    "kind": "PrometheusTimeSeriesQuery",
+                    "spec": {
+                      "datasource": {
+                        "kind": "PrometheusDatasource",
+                        "name": "data-science-prometheus-datasource"
+                      },
+                      "query": "sum(limited_calls{subscription=\"demo-low-quota\",limitador_namespace=\"maas-demo/demo-llm-kserve-route\"})",
+                      "seriesNameFormat": "Errors"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "tokenConsumptionOverTime": {
+          "kind": "Panel",
+          "spec": {
+            "display": {
+              "name": "Tokens par souscription sur 5 minutes",
+              "description": "Source : Limitador, métriques collectées par Prometheus. Les compteurs sont réinitialisés au redémarrage."
+            },
+            "plugin": {
+              "kind": "TimeSeriesChart",
+              "spec": {
+                "legend": {
+                  "mode": "table",
+                  "position": "bottom",
+                  "values": []
+                },
+                "visual": {
+                  "areaOpacity": 1,
+                  "connectNulls": true,
+                  "display": "line",
+                  "lineWidth": 3,
+                  "pointRadius": 6,
+                  "showPoints": "always",
+                  "stack": "all"
+                },
+                "yAxis": {
+                  "format": {
+                    "unit": "decimal"
+                  },
+                  "min": 0
+                }
+              }
+            },
+            "queries": [
+              {
+                "kind": "TimeSeriesQuery",
+                "spec": {
+                  "plugin": {
+                    "kind": "PrometheusTimeSeriesQuery",
+                    "spec": {
+                      "datasource": {
+                        "kind": "PrometheusDatasource",
+                        "name": "data-science-prometheus-datasource"
+                      },
+                      "query": "sum by(subscription,model) (increase(authorized_hits{limitador_namespace=\"maas-demo/demo-llm-kserve-route\"}[5m]))"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "variables": []
+    }
+  }
+}

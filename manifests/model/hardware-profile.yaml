@@ -1,0 +1,30 @@
+apiVersion: infrastructure.opendatahub.io/v1
+kind: HardwareProfile
+metadata:
+  name: maas-demo-gpu
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: maas-demo
+  annotations:
+    opendatahub.io/display-name: MaaS - 1 GPU
+    opendatahub.io/disabled: 'false'
+spec:
+  identifiers:
+  - identifier: cpu
+    displayName: CPU
+    resourceType: CPU
+    minCount: 1
+    defaultCount: 1
+    maxCount: 4
+  - identifier: memory
+    displayName: Memory
+    resourceType: Memory
+    minCount: 4Gi
+    defaultCount: 4Gi
+    maxCount: 8Gi
+  - identifier: nvidia.com/gpu
+    displayName: GPU
+    resourceType: Accelerator
+    minCount: 1
+    defaultCount: 1
+    maxCount: 1

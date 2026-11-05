@@ -1,11 +1,3 @@
-# Gouverner — main subscription used throughout the live demo (Scenario B/C/D/F/G).
-# Validated against: https://docs.redhat.com/.../deploy-and-manage-models-as-a-service
-# (section 1.14 "Manage Models-as-a-Service subscriptions") and the live CRD
-# schema (`oc explain maassubscription.spec --recursive` on this sandbox).
-#
-# Namespace: the default MaaS tenant namespace (`models-as-a-service`), NOT
-# the model's own namespace — confirmed by the official YAML example and by
-# the live AITenant/MaasTenantConfig ("default-tenant" in that namespace).
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSSubscription
 metadata:
@@ -14,16 +6,17 @@ metadata:
   labels:
     app.kubernetes.io/part-of: maas-demo
   annotations:
-    openshift.io/description: "Gouverner — grants group demo-team quota on demo-llm (maas-demo). Isolated demo subscription; does not touch any other sandbox user's subscription."
+    openshift.io/description: 'Équipe Data Science : 2 000 tokens par minute pour
+      notre assistant.'
 spec:
   owner:
     groups:
-      - name: demo-team
+    - name: demo-team
     users: []
   priority: 10
   modelRefs:
-    - name: demo-llm
-      namespace: maas-demo
-      tokenRateLimits:
-        - limit: 2000
-          window: 1m
+  - name: demo-llm
+    namespace: maas-demo
+    tokenRateLimits:
+    - limit: 2000
+      window: 1m

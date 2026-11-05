@@ -1,0 +1,59 @@
+{
+  "time": "2026-11-05T09:31:47Z",
+  "source": "Limitador /metrics",
+  "scope": "Counters since process start; not a billing ledger",
+  "series": [
+    {
+      "metric": "authorized_calls",
+      "labels": {
+        "subscription": "demo-quota",
+        "organization_id": "",
+        "cost_center": "",
+        "limitador_namespace": "maas-demo/demo-llm-kserve-route"
+      },
+      "value": 9.0
+    },
+    {
+      "metric": "authorized_calls",
+      "labels": {
+        "subscription": "demo-low-quota",
+        "cost_center": "",
+        "organization_id": "",
+        "limitador_namespace": "maas-demo/demo-llm-kserve-route"
+      },
+      "value": 1.0
+    },
+    {
+      "metric": "limited_calls",
+      "labels": {
+        "cost_center": "",
+        "subscription": "demo-low-quota",
+        "organization_id": "",
+        "limitador_namespace": "maas-demo/demo-llm-kserve-route"
+      },
+      "value": 1.0
+    },
+    {
+      "metric": "authorized_hits",
+      "labels": {
+        "subscription": "demo-low-quota",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "organization_id": "",
+        "cost_center": "",
+        "limitador_namespace": "maas-demo/demo-llm-kserve-route"
+      },
+      "value": 107.0
+    },
+    {
+      "metric": "authorized_hits",
+      "labels": {
+        "subscription": "demo-quota",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "organization_id": "",
+        "cost_center": "",
+        "limitador_namespace": "maas-demo/demo-llm-kserve-route"
+      },
+      "value": 963.0
+    }
+  ]
+}
