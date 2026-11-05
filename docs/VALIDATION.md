@@ -15,7 +15,8 @@ OpenShift 4.20.42, OpenShift AI 3.5.2, un GPU NVIDIA. Modèle réel `Qwen/Qwen2.
 - Petit quota : premier appel 200, suivant 429. Voir `evidence/quota.json`.
 - Dashboard admin **MaaS démo** ouvert dans OpenShift AI : compteurs réels et courbe par souscription, capture dans `evidence/maas-observability.jpg`.
 - Deux exécutions complètes du bootstrap après correction. La seconde conserve UID et génération de six Deployments vérifiés (modèle, gateway, PostgreSQL, MaaS API, Authorino, dashboard operator), le même pod modèle et le même contenu du secret PostgreSQL. Voir `evidence/idempotence.json`.
-- Deux PDF régénérés et examinés visuellement : guide de préparation (5 pages), feuille de démo (6 pages).
+- Enregistrement des clés : essais isolés du script avec des valeurs fictives ; première saisie, conservation des clés avec Entrée, refus d'une entrée invalide et permissions 0600 vérifiés, sans modifier les clés réelles.
+- Deux PDF régénérés et examinés visuellement : guide de préparation (5 pages), feuille de démo remaniée pour débutants (10 fiches/pages).
 
 ## Défauts corrigés
 

@@ -24,6 +24,7 @@ body = markdown.markdown(
     text,
     extensions=["tables", "fenced_code", "toc", "sane_lists"],
 )
+body_class = "demo-sheet" if pathlib.Path(src).stem == "FEUILLE-DEMO" else ""
 html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -50,9 +51,16 @@ html = f"""<!DOCTYPE html>
   blockquote {{ border-left: 4px solid #ee0000; margin: 1em 0; padding: 0.2em 1em; color: #555; }}
   hr {{ border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }}
   a {{ color: #0066cc; word-break: break-all; }}
+  body.demo-sheet {{ font-size: 11pt; line-height: 1.42; }}
+  body.demo-sheet h2 {{ break-before: page; margin-top: 0; color: #a30000; }}
+  body.demo-sheet h2:first-of-type {{ break-before: auto; margin-top: 1em; }}
+  body.demo-sheet h3 {{ font-size: 11.5pt; }}
+  body.demo-sheet p {{ orphans: 3; widows: 3; }}
+  body.demo-sheet pre {{ line-height: 1.35; }}
+  body.demo-sheet blockquote {{ background: #fff5f5; padding: 0.6em 1em; break-inside: avoid; }}
 </style>
 </head>
-<body>
+<body class="{body_class}">
 {body}
 </body>
 </html>"""

@@ -4,6 +4,7 @@
 
 - [Guide de préparation et de reconstruction](GUIDE.md)
 - [Feuille de démonstration : clics, champs, phrases à dire](FEUILLE-DEMO.md)
+- [Feuille en PDF : une étape par page](FEUILLE-DEMO.pdf) — page 7 pour enregistrer la clé, page 8 pour le premier appel.
 - [Validation et limites observées](docs/VALIDATION.md)
 
 ## Deux façons de démarrer
