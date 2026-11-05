@@ -246,27 +246,8 @@ formulaire pour la caméra puis tu annules, et tu ouvres l'objet en
 place. Le seul bouton à valider vraiment pendant la prise est
 **Create API key**.
 
-**Sandbox déjà installée (`mqgbd.sandbox840`).** Les objets sont en
-place avec les noms d'avant le renommage du dépôt. Pour chaque nom de
-cette feuille, utilise la colonne de droite. Login HTPasswd,
-utilisateur `maas-demo2-user`. Mot de passe, hors champ :
-`cat secrets/demo2/maas-demo2-user.password`. Domaine :
-`apps.ocp.mqgbd.sandbox840.opentlc.com`.
-
-| Dans cette feuille | Sur cette sandbox |
-|---|---|
-| `maas-demo` | `rhoai-maas-demo` |
-| `demo-llm` | `demo-simulator` |
-| `demo-team` | `maas-demo2-developers` |
-| `demo-user` | `maas-demo2-user` |
-| `demo-quota` | `maas-demo2-subscription` |
-| `demo-access` | `maas-demo2-access` |
-| `demo-low-quota` | `maas-demo2-subscription-ratelimit-test` |
-| `secrets/demo-user.password` | `secrets/demo2/maas-demo2-user.password` |
-| `publishers/maas-demo/models/facebook/opt-125m` | `publishers/rhoai-maas-demo/models/facebook/opt-125m` |
-
-Une sandbox neuve, après `bash scripts/bootstrap.sh`, utilise les noms
-de la colonne de gauche.
+Sur la sandbox `mqgbd.sandbox840`, les objets portent déjà ces noms.
+Domaine : `apps.ocp.mqgbd.sandbox840.opentlc.com`.
 
 Deux fenêtres avant d'enregistrer : admin dans la fenêtre normale,
 `demo-user` dans une navigation privée. Mot de passe, hors champ :
