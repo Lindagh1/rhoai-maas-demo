@@ -34,7 +34,7 @@ html = f"""<!DOCTYPE html>
   body {{
     font-family: "Segoe UI", Helvetica, Arial, sans-serif;
     font-size: 10pt;
-    line-height: 1.45;
+    line-height: 1.4;
     color: #1a1a1a;
     max-width: 100%;
   }}

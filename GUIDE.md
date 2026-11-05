@@ -66,7 +66,9 @@ Sur la même sandbox, une relance sans changement conserve le pod et les images.
 
 Le mot de passe généré est local : `secrets/demo-user.password`. Le répertoire est privé et exclu de Git. Un utilisateur HTPasswd existant n'autorise pas à retrouver son mot de passe ; restaurer le fichier local ou réinitialiser explicitement son mot de passe. Le kit ne change pas silencieusement le mot de passe d'un utilisateur existant.
 
-Ouvrir deux profils de navigateur : administrateur et data scientist. Le second doit afficher `demo-user`, pas `admin`. Les droits de consultation accordés pour le dashboard ne remplacent pas la souscription MaaS. Le manifeste de démonstration inclut des droits de découverte à l'échelle du cluster et d'administration du seul projet `maas-demo` pour les usages workbench ; ce n'est pas un modèle de cloisonnement de production.
+Garder l'administrateur dans une **fenêtre normale** et ouvrir une **fenêtre de navigation privée / InPrivate** pour le data scientist. Dans cette fenêtre privée, ouvrir l'URL OpenShift AI de `make endpoints`, choisir le fournisseur de `demo-user` (**corp-demo** sur la sandbox validée), puis se connecter avec `demo-user` et le mot de passe du fichier local. Vérifier le compte affiché en haut à droite avant de montrer les souscriptions. Un profil de navigateur distinct convient aussi ; un simple nouvel onglet normal partage la session admin. Revenir à la fenêtre normale pour l'observabilité admin.
+
+Les droits de consultation accordés pour le dashboard ne remplacent pas la souscription MaaS. Le manifeste de démonstration inclut des droits de découverte à l'échelle du cluster et d'administration du seul projet `maas-demo` pour les usages workbench ; ce n'est pas un modèle de cloisonnement de production.
 
 ## 5. Le modèle réel
 

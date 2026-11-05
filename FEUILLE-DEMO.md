@@ -1,6 +1,6 @@
 # Feuille de démo — de Hugging Face à une API gouvernée
 
-**Durée indicative : 15 à 20 minutes**, hors installation des opérateurs. Deux fenêtres : **ADMIN** et **DATA SCIENTIST**. Garder cette feuille sur un autre écran. Les intitulés ont été relevés dans la sandbox RHOAI 3.5.2 le 5 novembre 2026.
+**Durée indicative : 15 à 20 minutes**, hors installation des opérateurs. Deux sessions séparées : **ADMIN dans une fenêtre normale**, **DATA SCIENTIST dans une fenêtre privée**. Garder cette feuille sur un autre écran. Les intitulés ont été relevés dans la sandbox RHOAI 3.5.2 le 5 novembre 2026.
 
 **Situation :** « Notre équipe Data Science veut utiliser un assistant sans administrer son serveur. Je suis l'administrateur : je vais publier le modèle, donner un accès limité à l'équipe, puis vérifier sa consommation. »
 
@@ -140,7 +140,15 @@ oc apply -f manifests/govern/user-rbac.yaml
 
 ## 5 — DATA SCIENTIST : découvrir son accès et créer une clé
 
-Basculer sur le profil navigateur `demo-user`, se connecter à OpenShift AI. Vérifier le nom du compte dans le menu utilisateur.
+**Ouvrir la session data scientist :** garder la fenêtre normale connectée en admin. Dans le menu du navigateur, choisir **Nouvelle fenêtre de navigation privée** (ou **InPrivate**), puis ouvrir l'URL OpenShift AI donnée par `make endpoints`. Cette fenêtre possède une session indépendante ; un simple nouvel onglet normal partage la session admin.
+
+- Sur l'écran de connexion, choisir le fournisseur contenant `demo-user` : **corp-demo** sur cette sandbox ; sur une nouvelle sandbox, utiliser celui préparé par le kit.
+- **Username** : `demo-user`. **Password** : le mot de passe conservé localement dans `secrets/demo-user.password`.
+- Cliquer **Log in**, puis vérifier que le compte affiché en haut à droite est bien **demo-user**.
+
+**À dire :** « Je passe maintenant dans la session du data scientist pour montrer les accès que l'administrateur lui a accordés. »
+
+**Montrer la souscription et créer la clé :**
 
 1. **Gen AI studio → API keys**.
 2. Onglet **Subscriptions**, puis cliquer **demo-quota** : montrer le modèle et la limite `2,000 / 1 minute`.
@@ -234,6 +242,6 @@ Option révocation : révoquer une clé de test dans API keys, puis refaire un a
 
 **ADMIN** : Settings → MaaS governance → Create subscription → groupe + modèle + 2 000/min → Authorization policies → demo-access.
 
-**DATA SCIENTIST** : API keys → Subscriptions → Create API key → appel → réponse et tokens.
+**DATA SCIENTIST** : fenêtre privée → connexion demo-user → API keys → Subscriptions → Create API key → appel → réponse et tokens.
 
-**ADMIN** : Observe & monitor → Dashboard → MaaS démo → Refresh → augmentation des compteurs.
+**ADMIN** : retour à la fenêtre normale → Observe & monitor → Dashboard → MaaS démo → Refresh → augmentation des compteurs.
