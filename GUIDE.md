@@ -1,9 +1,15 @@
-# Guide complet — RHOAI 3.5 MaaS Demo (Sopra Steria)
+# Guide complet — RHOAI 3.5 MaaS
+
+Démo généraliste : publier un modèle, puis décider qui peut l'appeler
+et combien de tokens il a.
+
+**Le pas à pas à suivre pendant la démo** est la
+[Feuille de tournage](#feuille-de-tournage), plus bas dans la section 6.
+Le reste de ce fichier sert à installer, récupérer le mot de passe, et
+dépanner.
 
 **Ce document unique couvre tout le cycle** : sandbox neuve → installation
 → identifiants → démo live (clic par clic) → nettoyage → dépannage.
-Toute la doc "comment faire" du repo est ici, volontairement en un seul
-fichier pour ne pas avoir à deviner où chercher.
 
 **Durée démo live :** ~20 minutes (Publier le modèle, ~5 min ;
 Gouverner qui peut l'appeler, ~15 min).
@@ -30,6 +36,7 @@ Les noms disent le rôle. Ce que tu vois dans la console est le même mot que da
 4. [Créer les clés API (dashboard)](#4-créer-les-clés-api-dashboard)
 5. [Checklist avant d'entrer en salle](#5-checklist-avant-dentrer-en-salle)
 6. [Démo live — parcours complet, clic par clic](#6-démo-live--parcours-complet-clic-par-clic)
+   - [Feuille de tournage](#feuille-de-tournage) — le pas à pas à suivre en salle
 7. [Aide-mémoire (post-it)](#7-aide-mémoire-post-it)
 8. [Ce qu'il ne faut PAS dire ou promettre](#8-ce-quil-ne-faut-pas-dire-ou-promettre)
 9. [Dépannage](#9-dépannage)
@@ -238,6 +245,28 @@ Console OpenShift (YAML)          Dashboard OpenShift AI (clics)
 formulaire pour la caméra puis tu annules, et tu ouvres l'objet en
 place. Le seul bouton à valider vraiment pendant la prise est
 **Create API key**.
+
+**Sandbox déjà installée (`mqgbd.sandbox840`).** Les objets sont en
+place avec les noms d'avant le renommage du dépôt. Pour chaque nom de
+cette feuille, utilise la colonne de droite. Login HTPasswd,
+utilisateur `maas-demo2-user`. Mot de passe, hors champ :
+`cat secrets/demo2/maas-demo2-user.password`. Domaine :
+`apps.ocp.mqgbd.sandbox840.opentlc.com`.
+
+| Dans cette feuille | Sur cette sandbox |
+|---|---|
+| `maas-demo` | `rhoai-maas-demo` |
+| `demo-llm` | `demo-simulator` |
+| `demo-team` | `maas-demo2-developers` |
+| `demo-user` | `maas-demo2-user` |
+| `demo-quota` | `maas-demo2-subscription` |
+| `demo-access` | `maas-demo2-access` |
+| `demo-low-quota` | `maas-demo2-subscription-ratelimit-test` |
+| `secrets/demo-user.password` | `secrets/demo2/maas-demo2-user.password` |
+| `publishers/maas-demo/models/facebook/opt-125m` | `publishers/rhoai-maas-demo/models/facebook/opt-125m` |
+
+Une sandbox neuve, après `bash scripts/bootstrap.sh`, utilise les noms
+de la colonne de gauche.
 
 Deux fenêtres avant d'enregistrer : admin dans la fenêtre normale,
 `demo-user` dans une navigation privée. Mot de passe, hors champ :
@@ -660,7 +689,7 @@ DEMO LIVE
 | Chercher `demo-llm` dans Projects → Model Deployments | Les `LLMInferenceService` natifs n'y apparaissent pas — utiliser **Gen AI studio → AI asset endpoints** |
 | Utiliser "Edit model deployment" sur `demo-llm` | Formulaire vide (modèle déployé par YAML) — utiliser "Deploy model" (nouveau) |
 | Cliquer "Deploy" dans le wizard au lieu de "Cancel" | Le GPU est déjà pris, ça échouerait ou créerait un doublon |
-| Laisser tourner `make show-denials` sans prévenir | ~90s, le client peut croire que c'est planté |
+| Laisser tourner `make show-denials` sans prévenir | ~90s, on peut croire que c'est planté |
 | Improviser dans les formulaires dashboard pour restaurer vite | Les manifests du repo (`oc apply -f manifests/govern/`) sont plus sûrs |
 
 ---

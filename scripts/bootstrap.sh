@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Single entry point to redeploy the FULL Sopra Steria MaaS demo kit
+# Single entry point to redeploy the full MaaS demo kit
 # (Publier native publication + observability + Gouverner end-user journey
 # governance) on a brand-new RHOAI 3.5 sandbox.
 #
@@ -51,7 +51,7 @@ require_login
 assert_sandbox
 
 echo "=============================================="
-echo "Sopra Steria MaaS demo kit — full redeployment"
+echo "MaaS demo kit — full redeployment"
 echo "=============================================="
 info "Target cluster: $(oc whoami --show-server)"
 info "Steps: publish=${RUN_DEMO1} observability=${RUN_OBSERVABILITY} govern=${RUN_DEMO2}"

@@ -1,5 +1,10 @@
 # RHOAI 3.5 MaaS — publier un modèle, puis gouverner qui l'appelle
 
+Démo généraliste.
+
+**Pas à pas de la démo (champs, curl, observabilité) :**
+[`GUIDE.md`](GUIDE.md), section **Feuille de tournage**.
+
 Deux gestes, et seulement ceux-là :
 
 ```text
