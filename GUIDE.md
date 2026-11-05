@@ -115,14 +115,14 @@ qu'administrateur. Rien à récupérer : c'est le tien.
 - **Login :** `demo-user`
 - **Mot de passe :** généré **une seule fois** par `make govern-user`
   (ou par `scripts/bootstrap.sh`, qui l'appelle), stocké en local
-  uniquement, **jamais commité** (`secrets/` est dans `.gitignore`), dans :
-  ```text
-  secrets/demo-user.password
-  ```
-  Pour le lire :
+  uniquement, **jamais commité** (`secrets/` est dans `.gitignore`).
+  Le fichier est dans le clone, pas dans le répertoire personnel.
+  Cette commande marche depuis n'importe quel terminal :
   ```bash
-  cat secrets/demo-user.password
+  cat /home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password
   ```
+  `cat secrets/demo-user.password` ne marche qu'après
+  `cd /home/lgheziel/Projects/rhoai-maas-demo`.
 - **Si le fichier est vide ou absent** alors que l'utilisateur existe
   déjà sur cette sandbox (ex. créé par un run précédent dont le fichier
   local a été perdu) :
@@ -250,10 +250,11 @@ Sur la sandbox `mqgbd.sandbox840`, les objets portent déjà ces noms.
 Domaine : `apps.ocp.mqgbd.sandbox840.opentlc.com`.
 
 Deux fenêtres avant d'enregistrer : admin dans la fenêtre normale,
-`demo-user` dans une navigation privée. Mot de passe, hors champ :
+`demo-user` dans une navigation privée. Mot de passe, hors champ.
+Le terminal peut être dans n'importe quel dossier :
 
 ```bash
-cat secrets/demo-user.password
+cat /home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password
 ```
 
 Sur la page de login, choisis le fournisseur **HTPasswd** (celui affiché
@@ -638,7 +639,7 @@ Session `demo-user` :
 ```text
 INSTALLATION
   bash scripts/bootstrap.sh
-  cat secrets/demo-user.password   (login demo-user)
+  cat /home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password   (login demo-user)
   Dashboard (user) -> Gen AI studio -> API keys -> Create API key (x2)
   make save-key && make govern-verify
 

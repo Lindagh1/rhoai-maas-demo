@@ -22,7 +22,7 @@ Le mode d'emploi complet est [`GUIDE.md`](GUIDE.md) (le PDF se régénère avec 
 | Modèle | `demo-llm` | `manifests/model/llm.yaml` |
 | Publication MaaS | `demo-llm` | `manifests/publish/model-ref.yaml` |
 | Groupe | `demo-team` | créé par `scripts/govern/01-create-user.sh` |
-| Utilisateur | `demo-user` | idem, mot de passe dans `secrets/demo-user.password` |
+| Utilisateur | `demo-user` | idem, mot de passe : `cat /home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password` |
 | Quota (combien) | `demo-quota` | `manifests/govern/quota.yaml` |
 | Accès (qui) | `demo-access` | `manifests/govern/access.yaml` |
 | Petit quota (429) | `demo-low-quota` | `manifests/govern/low-quota.yaml` |
