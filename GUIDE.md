@@ -12,7 +12,7 @@ La feuille `FEUILLE-DEMO.md` est le support à garder ouvert pendant la présent
 
 ## 2. Prérequis d'une nouvelle sandbox
 
-La cible validée est OpenShift 4.20.42 avec OpenShift AI 3.5.2. Prévoir un compte cluster-admin, l'accès Internet aux registres Red Hat et Hugging Face, une StorageClass par défaut et au moins un GPU NVIDIA libre. Le modèle utilise 1 CPU demandé / 4 maximum, 4 GiB de RAM demandés / 8 maximum et 1 GPU.
+La cible validée est OpenShift 4.20.42 avec OpenShift AI 3.5.2. Prévoir un compte cluster-admin, l'accès Internet aux registres Red Hat et Hugging Face, une StorageClass par défaut et au moins un GPU NVIDIA libre. Le modèle utilise 1 CPU demandé / 4 maximum, 4 GiB de RAM demandés / 8 maximum et 1 GPU. Les essais et limites sont dans `docs/VALIDATION.md` ; une seconde sandbox vierge reste à tester.
 
 Les opérateurs RHOAI, GPU et les dépendances de l'inférence llm-d doivent être disponibles. Le kit installe les dépendances MaaS et observabilité via les catalogues : Red Hat Connectivity Link (canal stable-1.4), Cluster Observability Operator et OpenTelemetry. Il ne transforme pas un cluster OpenShift vierge en une installation RHOAI complète.
 
@@ -64,9 +64,15 @@ Sur la même sandbox, une relance sans changement conserve le pod et les images.
 
 `make prepare` détecte le fournisseur d'identité OpenShift. Il peut ajouter `demo-user` à un HTPasswd existant, ou utiliser le Keycloak intégré d'une sandbox dédiée. Pour un fournisseur externe, créer le compte selon le processus de cet IdP et l'associer au groupe OpenShift `demo-team` ; adapter l'étape identité du bootstrap, qui s'arrête explicitement sur ce cas. Si aucun IdP n'est configuré, `ADD_HTPASSWD_IDP=yes make prepare` autorise l'ajout du fournisseur HTPasswd de démonstration.
 
-Le mot de passe généré est local : `secrets/demo-user.password`. Le répertoire est privé et exclu de Git. Un utilisateur HTPasswd existant n'autorise pas à retrouver son mot de passe ; restaurer le fichier local ou réinitialiser explicitement son mot de passe. Le kit ne change pas silencieusement le mot de passe d'un utilisateur existant.
+**Retrouver le mot de passe de `demo-user` :** sur le poste où `make prepare` ou `make demo` a créé le compte, ouvrir un terminal dans le dossier du dépôt. Avant de partager l'écran, lire le fichier local :
 
-Garder l'administrateur dans une **fenêtre normale** et ouvrir une **fenêtre de navigation privée / InPrivate** pour le data scientist. Dans cette fenêtre privée, ouvrir l'URL OpenShift AI de `make endpoints`, choisir le fournisseur de `demo-user` (**corp-demo** sur la sandbox validée), puis se connecter avec `demo-user` et le mot de passe du fichier local. Vérifier le compte affiché en haut à droite avant de montrer les souscriptions. Un profil de navigateur distinct convient aussi ; un simple nouvel onglet normal partage la session admin. Revenir à la fenêtre normale pour l'observabilité admin.
+```bash
+cat secrets/demo-user.password
+```
+
+Copier la valeur dans **Password**. Le fichier est exclu de Git : un nouveau clone ne le récupère pas. S'il manque, le rechercher sur le poste de préparation ou auprès du créateur du compte. Sans copie, l'admin du fournisseur d'identité doit réinitialiser le mot de passe et mettre à jour ce fichier : le hash HTPasswd n'est pas réversible. Relancer le kit conserve le mot de passe existant.
+
+Garder l'admin en **fenêtre normale**. En **fenêtre privée / InPrivate**, ouvrir l'URL OpenShift AI de `make endpoints`, choisir **corp-demo** sur cette sandbox, puis se connecter avec `demo-user` et son mot de passe. Vérifier le compte affiché avant de montrer les souscriptions. La fenêtre privée sépare les sessions ; un onglet normal les partage. Revenir à la fenêtre admin pour l'observabilité.
 
 Les droits de consultation accordés pour le dashboard ne remplacent pas la souscription MaaS. Le manifeste de démonstration inclut des droits de découverte à l'échelle du cluster et d'administration du seul projet `maas-demo` pour les usages workbench ; ce n'est pas un modèle de cloisonnement de production.
 
@@ -166,5 +172,3 @@ Le reset conserve le projet, la plateforme et la base des clés. Il ne supprime 
 - [Red Hat : observabilité OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/3.5/html/managing_openshift_ai/managing-observability_managing-rhoai)
 - [Modèle Qwen public](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
 - [API MaaS upstream](https://github.com/opendatahub-io/models-as-a-service/blob/main/maas-api/openapi3.yaml)
-
-Les observations de cette sandbox, les essais réellement effectués et les limites sont consignés dans `docs/VALIDATION.md`. Une relance réussie sur la sandbox existante ne remplace pas un test d'installation intégrale sur une seconde sandbox neuve.

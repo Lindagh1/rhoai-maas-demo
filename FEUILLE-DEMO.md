@@ -140,6 +140,14 @@ oc apply -f manifests/govern/user-rbac.yaml
 
 ## 5 — DATA SCIENTIST : découvrir son accès et créer une clé
 
+**Préparer le mot de passe avant le partage d'écran :** sur le poste ayant préparé la démo, ouvrir un terminal à la racine du dépôt et exécuter :
+
+```bash
+cat secrets/demo-user.password
+```
+
+Copier cette valeur pour le champ **Password**. Le fichier reste local et n'est pas dans GitHub. S'il manque, le récupérer sur le poste de préparation ou auprès de son propriétaire ; sinon, faire réinitialiser le mot de passe par l'admin du fournisseur d'identité avant le direct (voir le guide, section 4).
+
 **Ouvrir la session data scientist :** garder la fenêtre normale connectée en admin. Dans le menu du navigateur, choisir **Nouvelle fenêtre de navigation privée** (ou **InPrivate**), puis ouvrir l'URL OpenShift AI donnée par `make endpoints`. Cette fenêtre possède une session indépendante ; un simple nouvel onglet normal partage la session admin.
 
 - Sur l'écran de connexion, choisir le fournisseur contenant `demo-user` : **corp-demo** sur cette sandbox ; sur une nouvelle sandbox, utiliser celui préparé par le kit.
@@ -209,7 +217,7 @@ python3 scripts/client.py --key-file secrets/demo-user.apikey --count 5
 
 Revenir côté admin, attendre le cycle de collecte (30 à 60 secondes), puis **Refresh**.
 
-**À montrer :** le compteur **Tokens consommés** augmente, les appels autorisés augmentent et la courbe porte le nom de la souscription/modèle. Comparer l'écart du compteur à la somme des `total_tokens` des réponses.
+**À montrer :** le compteur **Tokens consommés** augmente, les appels autorisés augmentent et la courbe porte le nom de la souscription/modèle. Comparer l'écart aux `total_tokens` cumulés des appels.
 
 **À dire :** « Je peux suivre l'usage de ce service par souscription. Ces nombres proviennent du contrôle MaaS, pas de données dessinées pour la démonstration. Les compteurs repartent de zéro au redémarrage du composant. »
 
