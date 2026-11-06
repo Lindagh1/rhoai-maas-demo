@@ -24,7 +24,7 @@ body = markdown.markdown(
     text,
     extensions=["tables", "fenced_code", "toc", "sane_lists"],
 )
-body_class = "demo-sheet" if pathlib.Path(src).stem == "FEUILLE-DEMO" else ""
+body_class = "demo-sheet" if pathlib.Path(src).stem in ("FEUILLE-DEMO", "VIDEO-DEMO") else ""
 html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -85,6 +85,7 @@ PY
 if [[ $# -eq 0 ]]; then
   md_to_pdf GUIDE.md GUIDE.pdf
   md_to_pdf FEUILLE-DEMO.md FEUILLE-DEMO.pdf
+  md_to_pdf VIDEO-DEMO.md VIDEO-DEMO.pdf
 else
   for f in "$@"; do
     md_to_pdf "$f"

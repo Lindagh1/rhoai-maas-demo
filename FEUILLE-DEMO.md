@@ -177,13 +177,14 @@ oc get maasmodelref demo-llm -n maas-demo
 
 ## 5 - DATA SCIENTIST : me connecter et créer ma clé
 
-**Avant le partage d'écran :** retrouver le mot de passe depuis le dossier du dépôt, sur le poste où le compte a été préparé :
+**Avant le partage d'écran, sur ton poste :** cette commande fonctionne depuis n'importe quel dossier, même si le terminal affiche `~` :
 
 ```bash
-cat secrets/demo-user.password
+cat "/home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password"
+printf '\n'
 ```
 
-Le fichier est local, exclu de GitHub. S'il manque, le récupérer sur le poste de préparation ou auprès du créateur du compte. Sans copie disponible, l'admin du fournisseur d'identité doit réinitialiser le mot de passe avant le direct ; voir le guide, section 4.
+Copier uniquement le mot de passe affiché dans **Password**. `printf` ajoute un retour à la ligne pour le séparer de `lgheziel@...`. Le chemin court `cat secrets/demo-user.password` exige d'être dans le dossier du dépôt : depuis `~`, il échoue. Le fichier est privé, absent de GitHub. S'il manque, voir le guide, section 4. Ouvrir ensuite un terminal neuf pour filmer les appels, sans le mot de passe à l'écran.
 
 **Où :** une **nouvelle fenêtre de navigation privée / InPrivate**. Garder la fenêtre normale ouverte pour l'admin.
 
@@ -352,3 +353,5 @@ MAAS_URL=https://maas.apps.ocp.mqgbd.sandbox840.opentlc.com make quota-test
 **Repère final :** mot de passe → connexion à l'interface ; souscription + autorisation → accès gouverné ; clé API → appel du modèle ; dashboard → consommation réelle.
 
 Les intitulés et comportements ont été vérifiés sur RHOAI 3.5.2. Les essais réalisés et leurs limites figurent dans [Validation](https://github.com/Lindagh1/rhoai-maas-demo/blob/codex/maas-demo-pedagogique/docs/VALIDATION.md).
+
+Pour enregistrer ce parcours sans voix, suivre le [guide vidéo OBS et Kdenlive](https://github.com/Lindagh1/rhoai-maas-demo/blob/codex/maas-demo-pedagogique/VIDEO-DEMO.md).

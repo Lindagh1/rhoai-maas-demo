@@ -64,13 +64,16 @@ Sur la même sandbox, une relance sans changement conserve le pod et les images.
 
 `make prepare` détecte le fournisseur d'identité OpenShift. Il peut ajouter `demo-user` à un HTPasswd existant, ou utiliser le Keycloak intégré d'une sandbox dédiée. Pour un fournisseur externe, créer le compte selon le processus de cet IdP et l'associer au groupe OpenShift `demo-team` ; adapter l'étape identité du bootstrap, qui s'arrête explicitement sur ce cas. Si aucun IdP n'est configuré, `ADD_HTPASSWD_IDP=yes make prepare` autorise l'ajout du fournisseur HTPasswd de démonstration.
 
-**Retrouver le mot de passe de `demo-user` :** sur le poste où `make prepare` ou `make demo` a créé le compte, ouvrir un terminal dans le dossier du dépôt. Avant de partager l'écran, lire le fichier local :
+**Retrouver le mot de passe sur ton poste, avant le partage d'écran :** utiliser ce chemin complet, qui fonctionne même depuis le dossier personnel `~` :
 
 ```bash
-cat secrets/demo-user.password
+cat "/home/lgheziel/Projects/rhoai-maas-demo/secrets/demo-user.password"
+printf '\n'
 ```
 
-Copier la valeur dans **Password**. Le fichier est exclu de Git : un nouveau clone ne le récupère pas. S'il manque, le rechercher sur le poste de préparation ou auprès du créateur du compte. Sans copie, l'admin du fournisseur d'identité doit réinitialiser le mot de passe et mettre à jour ce fichier : le hash HTPasswd n'est pas réversible. Relancer le kit conserve le mot de passe existant.
+Copier la valeur dans **Password**. La deuxième ligne sépare le mot de passe du prompt `lgheziel@...`. Le chemin court `secrets/demo-user.password` est relatif au dossier courant : il fonctionne seulement depuis la racine du dépôt qui contient ce fichier.
+
+Cette copie vient du clone initial dans `Projects`. Les scripts actualisés sont dans `/home/lgheziel/Summit Connect maas/repo` ; sa copie du mot de passe correspond aussi, vérifié le 6 novembre 2026. Sur un autre poste, utiliser le chemin du clone ayant préparé le compte. Le fichier est exclu de Git. Sans copie disponible, faire réinitialiser le mot de passe par l'admin du fournisseur d'identité : le hash HTPasswd n'est pas réversible. Relancer le kit conserve le mot de passe existant.
 
 Garder l'admin en **fenêtre normale**. En **fenêtre privée / InPrivate**, ouvrir l'URL OpenShift AI de `make endpoints`, choisir **corp-demo** sur cette sandbox, puis se connecter avec `demo-user` et son mot de passe. Vérifier le compte affiché avant de montrer les souscriptions. La fenêtre privée sépare les sessions ; un onglet normal les partage. Revenir à la fenêtre admin pour l'observabilité.
 

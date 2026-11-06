@@ -16,7 +16,7 @@ OpenShift 4.20.42, OpenShift AI 3.5.2, un GPU NVIDIA. Modèle réel `Qwen/Qwen2.
 - Dashboard admin **MaaS démo** ouvert dans OpenShift AI : compteurs réels et courbe par souscription, capture dans `evidence/maas-observability.jpg`.
 - Deux exécutions complètes du bootstrap après correction. La seconde conserve UID et génération de six Deployments vérifiés (modèle, gateway, PostgreSQL, MaaS API, Authorino, dashboard operator), le même pod modèle et le même contenu du secret PostgreSQL. Voir `evidence/idempotence.json`.
 - Enregistrement des clés : essais isolés du script avec des valeurs fictives ; première saisie, conservation des clés avec Entrée, refus d'une entrée invalide et permissions 0600 vérifiés, sans modifier les clés réelles.
-- Deux PDF régénérés et examinés visuellement : guide de préparation (5 pages), feuille de démo remaniée pour débutants (10 fiches/pages).
+- Trois PDF régénérés et examinés visuellement : guide de préparation (5 pages), feuille de démo remaniée pour débutants (10 fiches/pages), méthode vidéo sans son (4 pages, ajoutée le 6 novembre).
 
 ## Défauts corrigés
 
@@ -43,3 +43,9 @@ Le test livré modifie les bénéficiaires de la policy sans la supprimer : le c
 Le Llama préexistant `my-first-model/llama-32-3b-instruct` reste arrêté avec l'accord de l'utilisateur pour laisser le GPU à Qwen. Sa définition reste disponible. Les autres démonstrations présentes sur le cluster n'ont pas été nettoyées.
 
 Le suivi par souscription est un compteur technique et une aide au showback. Le nombre de tokens n'est pas un coût financier ; la consommation par utilisateur/clé n'est pas disponible dans les séries observées. Le compteur se réinitialise au redémarrage de Limitador.
+
+## Compléments du 6 novembre 2026
+
+Les chemins absolus des deux copies locales du mot de passe ont été vérifiés sans afficher leur contenu. La feuille indique celui utilisé avec succès depuis le dossier personnel du présentateur.
+
+Le guide vidéo décrit une capture OBS et un montage Kdenlive, avec références aux documentations officielles. Les réglages constituent une procédure à suivre ; aucun enregistrement vidéo ni installation de ces applications n'a été effectué pendant cette mise à jour.
