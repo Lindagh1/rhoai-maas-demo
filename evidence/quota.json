@@ -1,0 +1,21 @@
+{
+  "time": "2026-11-05T09:41:15Z",
+  "model": "publishers/maas-demo/models/Qwen/Qwen2.5-0.5B-Instruct",
+  "results": [
+    {
+      "http": 200,
+      "usage": {
+        "prompt_tokens": 43,
+        "total_tokens": 107,
+        "completion_tokens": 64,
+        "prompt_tokens_details": null
+      },
+      "answer": "Une API (Application Programming Interface) est un outil qui permet de communiquer entre deux applications ou services en utilisant des langages de programmation différents. Elle offre la possibilité d'interfacer les fonctionnalités et les données de l'un avec celles d'autre, facilitant ainsi le développement et"
+    },
+    {
+      "http": 429,
+      "usage": null,
+      "answer": ""
+    }
+  ]
+}

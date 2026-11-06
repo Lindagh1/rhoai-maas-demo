@@ -66,16 +66,8 @@ case "$STRATEGY" in
     if kc_user_exists; then
       ok "'${DEMO_USER}' already exists in Keycloak realm '${DEMO_KC_REALM}' — skipping creation (idempotent)."
       if [[ ! -s "$DEMO_PASSWORD_FILE" ]]; then
-        warn "User already exists but no local password file at $DEMO_PASSWORD_FILE — resetting password now so login can be verified."
-        PASSWORD=$(gen_password)
-        TOKEN=$(kc_admin_token)
-        UID_=$(kc_user_id)
-        curl -sk -X PUT -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
-          "$(sso_url)/admin/realms/${DEMO_KC_REALM}/users/${UID_}/reset-password" \
-          -d "{\"type\":\"password\",\"value\":\"${PASSWORD}\",\"temporary\":false}" >/dev/null
-        printf '%s' "$PASSWORD" > "$DEMO_PASSWORD_FILE"
-        chmod 600 "$DEMO_PASSWORD_FILE"
-        unset PASSWORD TOKEN UID_
+        err "Existing Keycloak user but no local password file. Restore the local file or reset the password explicitly in the IdP."
+        exit 1
       fi
     else
       TOKEN=$(kc_admin_token) || { err "Could not obtain a Keycloak admin token."; exit 1; }
@@ -139,10 +131,10 @@ print(json.dumps({
     err "An external OIDC provider is configured that this script will NOT administer automatically"
     err "(not a sandbox-scoped in-cluster Keycloak — looks like shared/enterprise IdP infrastructure)."
     echo
-    echo "BLOCKED — manual procedure required. See GUIDE.md §11.5 for:"
+    echo "BLOCKED — manual procedure required. See GUIDE.md section 4 for:"
     echo "  - how to request/create a non-admin test account in that external IdP,"
     echo "  - how group-claim mapping needs to be verified before MaaS subscriptions can target a Group,"
-    echo "  - the architecture diagram for this path (not executed on this sandbox)."
+    echo "  - this external-IdP path is not validated on this sandbox."
     exit 2
     ;;
 

@@ -22,7 +22,7 @@ if oc get configmap cluster-monitoring-config -n openshift-monitoring &>/dev/nul
   else
     warn "cluster-monitoring-config exists; merging enableUserWorkload=true without wiping other keys"
     # Prefer patching via apply of known-good minimal config only when empty/absent flag.
-    oc apply -f manifests/platform/11-user-workload-monitoring.yaml
+    python3 scripts/merge-monitoring.py
   fi
 else
   oc apply -f manifests/platform/11-user-workload-monitoring.yaml

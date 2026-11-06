@@ -1,0 +1,41 @@
+[INFO] Authenticated as admin @ https://api.ocp.mqgbd.sandbox840.opentlc.com:6443
+==============================================
+Redeployment kit — validation (read-only, no mutation)
+==============================================
+[INFO] Target: admin @ https://api.ocp.mqgbd.sandbox840.opentlc.com:6443
+
+--- 1. Operator catalog availability ---
+[OK] authorino-operator (Authorino Operator) — channels: alpha stable
+[OK] cluster-observability-operator (Cluster Observability Operator (COO)) — channels: fast stable
+[OK] rhods-operator (Red Hat OpenShift AI) — channels: 3.2-exception-support alpha beta embedded eus-2.16 eus-2.25 eus-2.8 eus-3.5 fast fast-3.x stable stable-2.10 stable-2.13 stable-2.16 stable-2.19 stable-2.22 stable-2.25 stable-2.8 stable-3.3 stable-3.4 stable-3.5 stable-3.x support-required-upgrade support-required-upgrade-3.5
+[OK] rhcl-operator (RHCL (Kuadrant/Authorino dependency, used stable-1.4)) — channels: stable stable-1.4 stable-1.5
+[OK] opentelemetry-product (Red Hat build of OpenTelemetry) — channels: stable
+
+--- 2. Manifest dry-run (server-side, against live CRDs) ---
+[OK] dry-run OK: manifests/platform/01-gatewayclass.yaml
+[OK] dry-run OK: manifests/platform/02-kuadrant-namespace.yaml
+[OK] dry-run OK: manifests/platform/03-rhcl-operator-subscription.yaml
+[OK] dry-run OK: manifests/platform/04-authorino-service-annotation.yaml
+[OK] dry-run OK: manifests/platform/05-kuadrant.yaml
+[OK] dry-run OK: manifests/platform/06-gateway-resources.yaml
+[OK] dry-run OK: manifests/platform/08-postgres-pvc.yaml
+[OK] dry-run OK: manifests/platform/09-postgres-deployment.yaml
+[OK] dry-run OK: manifests/platform/10-postgres-service.yaml
+[OK] dry-run OK: manifests/platform/11-user-workload-monitoring.yaml
+[OK] dry-run OK: /tmp/tmp.WkuWs4Dvs4
+[OK] dry-run OK: manifests/model/namespace.yaml
+[OK] dry-run OK: manifests/model/llm.yaml
+[OK] dry-run OK: manifests/model/hardware-profile.yaml
+[OK] dry-run OK: manifests/observability/demo-dashboard.json
+[OK] dry-run OK: manifests/publish/model-ref.yaml
+[OK] dry-run OK: manifests/observability/cluster-observability-operator.yaml
+[OK] dry-run OK: manifests/observability/opentelemetry-operator.yaml
+[OK] dry-run OK: manifests/observability/rbac-podmonitors.yaml
+[OK] dry-run OK: manifests/govern/quota.yaml
+[OK] dry-run OK: manifests/govern/access.yaml
+[OK] dry-run OK: manifests/govern/low-quota.yaml
+[OK] dry-run OK: manifests/govern/user-rbac.yaml
+
+==============================================
+[OK] All manifests passed server-side dry-run against the live cluster. No mutation was made.
+==============================================

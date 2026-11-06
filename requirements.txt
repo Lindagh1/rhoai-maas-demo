@@ -1,0 +1,3 @@
+# Local preparation and PDF generation (runtime inference is managed by RHOAI).
+PyYAML>=6,<7
+Markdown>=3.6,<4

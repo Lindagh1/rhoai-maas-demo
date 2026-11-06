@@ -1,0 +1,5 @@
+{
+  "method": "withdraw demo-team from subjects, then restore exact subjects",
+  "without_group": 403,
+  "restored_policy": 200
+}

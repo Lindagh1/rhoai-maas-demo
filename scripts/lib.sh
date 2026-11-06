@@ -83,20 +83,17 @@ wait_csv_succeeded() {
 }
 
 gpu_free_count() {
-  local node capacity allocated
-  node=$(oc get nodes -o jsonpath='{.items[0].metadata.name}')
-  capacity=$(oc get node "$node" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}')
-  capacity=${capacity:-0}
-  allocated=$(oc get pods -A -o json | python3 -c '
-import json,sys
-d=json.load(sys.stdin)
-n=0
-for p in d["items"]:
-  if p["status"].get("phase") in ("Succeeded","Failed"):
-    continue
-  for c in p.get("spec",{}).get("containers",[]):
-    n += int(c.get("resources",{}).get("requests",{}).get("nvidia.com/gpu",0) or 0)
-print(n)
-' 2>/dev/null || echo 0)
-  python3 -c "print(max(0, int('${capacity}') - int('${allocated}')))" 2>/dev/null || echo 0
+  python3 - <<'PYGPU'
+import json, subprocess
+nodes=json.loads(subprocess.check_output(['oc','get','nodes','-o','json']))['items']
+pods=json.loads(subprocess.check_output(['oc','get','pods','-A','-o','json']))['items']
+capacity=sum(int(n['status'].get('allocatable',{}).get('nvidia.com/gpu',0)) for n in nodes if not n.get('spec',{}).get('unschedulable'))
+used=0
+for p in pods:
+ if p.get('status',{}).get('phase') in ('Succeeded','Failed'): continue
+ spec=p.get('spec',{})
+ gpu=lambda c:int(c.get('resources',{}).get('requests',{}).get('nvidia.com/gpu',0))
+ used+=max(sum(map(gpu,spec.get('containers',[]))),max(map(gpu,spec.get('initContainers',[])),default=0))
+print(max(0,capacity-used))
+PYGPU
 }

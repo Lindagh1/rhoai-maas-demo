@@ -79,6 +79,7 @@ else
   oc patch dsc default-dsc --type=merge -p '{
     "spec": {
       "components": {
+        "ogx": {"managementState": "Managed"},
         "aigateway": {
           "managementState": "Managed",
           "modelsAsAService": { "managementState": "Managed" }
@@ -95,6 +96,12 @@ oc patch odhdashboardconfig odh-dashboard-config -n redhat-ods-applications --ty
 }' >/dev/null
 ok "Dashboard flags: modelAsService=true, genAiStudio=true"
 
+# ogx must also be enabled when MaaS was already Managed.
+oc patch dsc default-dsc --type=merge -p '{"spec":{"components":{"ogx":{"managementState":"Managed"}}}}' >/dev/null
+# AWS single-node sandbox: permit the LB to route between zones.
+if [[ "$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.type}')" == AWS ]]; then
+  oc annotate svc maas-default-gateway-openshift-default -n openshift-ingress service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled=true --overwrite >/dev/null
+fi
 # --- Wait for MaaS CRDs + infra ---
 info "Waiting for MaaS CRDs (up to 10 min)..."
 CRD_COUNT=0
@@ -162,8 +169,9 @@ ST=$(oc get dsc default-dsc -o jsonpath='{.status.conditions[?(@.type=="ModelsAs
 if [[ "$ST" == "True" ]]; then
   ok "ModelsAsAServiceReady=True"
 else
-  warn "ModelsAsAServiceReady=$ST — check maas-api / DB / UWM; continuing so verify can diagnose"
+  err "ModelsAsAServiceReady=$ST — check maas-api / DB / UWM"
   oc get dsc default-dsc -o jsonpath='{.status.conditions[?(@.type=="ModelsAsAServiceReady")]}{"\n"}' || true
+  exit 1
 fi
 
 echo ""

@@ -24,34 +24,43 @@ body = markdown.markdown(
     text,
     extensions=["tables", "fenced_code", "toc", "sane_lists"],
 )
+body_class = "demo-sheet" if pathlib.Path(src).stem in ("FEUILLE-DEMO", "VIDEO-DEMO") else ""
 html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <title>{title}</title>
 <style>
-  @page {{ margin: 18mm 16mm; }}
+  @page {{ size: A4; margin: 18mm 16mm; @bottom-right {{ content: counter(page); font-size: 9pt; color: #666; }} }}
   body {{
     font-family: "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 11pt;
-    line-height: 1.45;
+    font-size: 10pt;
+    line-height: 1.4;
     color: #1a1a1a;
     max-width: 100%;
   }}
   h1 {{ font-size: 22pt; color: #ee0000; border-bottom: 2px solid #ee0000; padding-bottom: 6px; }}
   h2 {{ font-size: 15pt; color: #333; margin-top: 1.4em; page-break-after: avoid; }}
   h3 {{ font-size: 12.5pt; color: #444; page-break-after: avoid; }}
+  ul, ol {{ page-break-inside: avoid; }}
   table {{ border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 10pt; page-break-inside: avoid; }}
   th, td {{ border: 1px solid #ccc; padding: 6px 8px; vertical-align: top; }}
   th {{ background: #f5f5f5; }}
   code {{ background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }}
-  pre {{ background: #f8f8f8; border: 1px solid #ddd; padding: 10px; overflow-x: auto; font-size: 9pt; page-break-inside: avoid; }}
+  pre {{ background: #f8f8f8; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 8.5pt; page-break-inside: avoid; }}
   blockquote {{ border-left: 4px solid #ee0000; margin: 1em 0; padding: 0.2em 1em; color: #555; }}
   hr {{ border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }}
   a {{ color: #0066cc; word-break: break-all; }}
+  body.demo-sheet {{ font-size: 11pt; line-height: 1.42; }}
+  body.demo-sheet h2 {{ break-before: page; margin-top: 0; color: #a30000; }}
+  body.demo-sheet h2:first-of-type {{ break-before: auto; margin-top: 1em; }}
+  body.demo-sheet h3 {{ font-size: 11.5pt; }}
+  body.demo-sheet p {{ orphans: 3; widows: 3; }}
+  body.demo-sheet pre {{ line-height: 1.35; }}
+  body.demo-sheet blockquote {{ background: #fff5f5; padding: 0.6em 1em; break-inside: avoid; }}
 </style>
 </head>
-<body>
+<body class="{body_class}">
 {body}
 </body>
 </html>"""
@@ -61,7 +70,7 @@ with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="ut
 cmd = chrome_hint  # resolved by the bash wrapper (google-chrome → chromium fallback)
 user_data = tempfile.mkdtemp(prefix="chrome-pdf-")
 subprocess.run([
-    cmd, "--headless=new", "--disable-gpu", "--no-sandbox",
+    cmd, "--headless=new", "--disable-gpu", "--no-sandbox", "--no-pdf-header-footer",
     f"--user-data-dir={user_data}",
     f"--print-to-pdf={pathlib.Path(dst).resolve()}",
     f"file://{tmp}",
@@ -75,6 +84,8 @@ PY
 
 if [[ $# -eq 0 ]]; then
   md_to_pdf GUIDE.md GUIDE.pdf
+  md_to_pdf FEUILLE-DEMO.md FEUILLE-DEMO.pdf
+  md_to_pdf VIDEO-DEMO.md VIDEO-DEMO.pdf
 else
   for f in "$@"; do
     md_to_pdf "$f"

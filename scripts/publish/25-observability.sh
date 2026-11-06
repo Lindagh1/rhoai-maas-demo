@@ -115,16 +115,11 @@ if [[ "$READY" == "True" ]]; then
   ok "DSCInitialization Ready=True"
 else
   REASON=$(oc get dscinitialization default-dsci -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' 2>/dev/null || true)
-  warn "DSCInitialization Ready=$READY — ${REASON:-no message}"
+  err "DSCInitialization Ready=$READY — ${REASON:-no message}"
+  exit 1
 fi
 
-# --- Nudge the dashboard-operator reconcile so it auto-detects Perses and
-#     flips Dashboard.status.conditions[ObservabilityAvailable] to True. A
-#     plain restart is enough; it is safe to run repeatedly. ---
-info "Restarting dashboard-operator to pick up the now-ready monitoring stack"
-oc rollout restart deployment/dashboard-operator -n redhat-ods-applications >/dev/null
-oc rollout status deployment/dashboard-operator -n redhat-ods-applications --timeout=120s >/dev/null
-
+# Wait for operator reconciliation without forcing a restart on every run.
 OBS_AVAILABLE=""
 for _ in $(seq 1 12); do
   OBS_AVAILABLE=$(oc get dashboard default-dashboard -o jsonpath='{.status.conditions[?(@.type=="ObservabilityAvailable")].status}' 2>/dev/null || true)
@@ -134,7 +129,8 @@ done
 if [[ "$OBS_AVAILABLE" == "True" ]]; then
   ok "Dashboard ObservabilityAvailable=True — 'Observe & Monitor → Dashboard' is now live in the UI"
 else
-  warn "Dashboard ObservabilityAvailable=$OBS_AVAILABLE — may need another minute; re-run this script to re-check"
+  err "Dashboard ObservabilityAvailable=$OBS_AVAILABLE — retry after resolving monitoring readiness"
+  exit 1
 fi
 
 # --- rhobs-group PodMonitor mirrors + RBAC (real fix found live) ---
@@ -149,7 +145,6 @@ echo ""
 ok "Observability stage complete."
 info "In the OpenShift AI dashboard: Observe & Monitor → Dashboard."
 info "Observed live on this build: Cluster / Models plus additional LLM/MaaS-related tabs can appear."
-info "Important limitation: the built-in 'Usage' view may still stay partially empty on this build even"
-info "after real traffic, because the underlying metrics do not consistently carry the user-level labels"
-info "that its PromQL queries expect. Treat 'Models' as reliable, and use 'make usage' as the"
-info "ground-truth admin check for MaaS-specific counters."
+info "The demo dashboard uses the observed subscription/model counters. Native Usage may expect a different metric schema."
+
+oc apply -f manifests/observability/demo-dashboard.json

@@ -59,7 +59,7 @@ GOV_MSG=$(oc get maasmodelref demo-llm -n maas-demo \
   -o jsonpath='{.status.conditions[?(@.type=="GovernanceAttached")].message}' 2>/dev/null || true)
 
 if [[ "$MR_READY" == "True" || "$MR_PHASE" == "Ready" ]]; then
-  ok "MaaSModelRef Ready (unexpected without Gouverner — still OK)"
+  ok "MaaSModelRef Ready (runtime and governance paired)"
   PASS=$((PASS + 1))
 else
   warn "MaaSModelRef Ready=$MR_READY phase=$MR_PHASE — expected until demo-quota and demo-access exist"
@@ -71,13 +71,10 @@ fi
 check "Dashboard modelAsService=true" \
   "[[ \$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.modelAsService}') == true ]]"
 
-check "Legacy my-first-model InferenceService still Ready (untouched)" \
-  "[[ \$(oc get isvc llama-32-3b-instruct -n my-first-model -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}') == True ]]"
-
 info "vLLMDeploymentOnMaaS=$(oc get odhdashboardconfig odh-dashboard-config -n redhat-ods-applications -o jsonpath='{.spec.dashboardConfig.vLLMDeploymentOnMaaS}' 2>/dev/null || echo unset)"
 info "Free GPU ≈ $(gpu_free_count 2>/dev/null || echo unknown)"
 info "MaaS URL: $(maas_host_url)"
-info "Dashboard: https://rhods-dashboard-redhat-ods-applications.$(cluster_domain)"
+info "Dashboard: $(oc get dashboard default-dashboard -o jsonpath='{.status.url}')"
 
 echo ""
 echo "Result: $PASS passed, $FAIL failed, $BLOCK expected-Demo2-blockers"

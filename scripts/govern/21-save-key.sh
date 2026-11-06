@@ -1,50 +1,25 @@
 #!/usr/bin/env bash
-# Secure local helper: prompts for the two Gouverner API keys without echoing
-# them, then writes them to the expected gitignored files.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
-# shellcheck disable=SC1091
-source scripts/govern/lib.sh
-
-main_file="$DEMO_APIKEY_FILE"
-ratelimit_file="$SECRETS_DIR/${DEMO_USER}.ratelimit.apikey"
-
-mkdir -p "$SECRETS_DIR"
-chmod 700 "$SECRETS_DIR" 2>/dev/null || true
-
-prompt_key() {
-  local label="$1" value=""
-  while true; do
-    read -r -s -p "$label" value
-    echo
-    if [[ -z "$value" ]]; then
-      warn "Empty value, please try again."
-      continue
-    fi
-    if [[ "$value" != sk-oai-* ]]; then
-      warn "Value does not start with 'sk-oai-'. Re-enter carefully."
-      continue
-    fi
-    printf '%s' "$value"
-    return 0
-  done
-}
-
-echo "=============================================="
-echo "Gouverner — capture API keys locally"
-echo "=============================================="
-echo "Paste each key when prompted. Input is hidden and nothing is echoed."
-echo
-
-MAIN_KEY="$(prompt_key "Main subscription key: ")"
-RL_KEY="$(prompt_key "Rate-limit subscription key: ")"
-
-printf '%s\n' "$MAIN_KEY" > "$main_file"
-printf '%s\n' "$RL_KEY" > "$ratelimit_file"
-chmod 600 "$main_file" "$ratelimit_file"
-
-ok "Saved:"
-echo "  $main_file"
-echo "  $ratelimit_file"
-echo
-info "Next step: make govern-verify"
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+umask 077
+mkdir -p secrets
+chmod 700 secrets
+read -rsp 'Clé de demo-quota (Entrée pour conserver si déjà enregistrée) : ' key; echo
+if [[ -n "$key" ]]; then
+ [[ "$key" == sk-oai-* ]] || { echo 'Clé MaaS attendue.' >&2; exit 1; }
+ printf '%s' "$key" > secrets/demo-user.apikey
+elif [[ -s secrets/demo-user.apikey ]]; then
+ echo 'Clé principale existante conservée.'
+else
+ echo 'Aucune clé principale enregistrée. Relancer make save-key et coller la clé de demo-quota.' >&2
+ exit 1
+fi
+chmod 600 secrets/demo-user.apikey
+read -rsp 'Clé de demo-low-quota (Entrée pour ignorer) : ' key; echo
+if [[ -n "$key" ]]; then
+ [[ "$key" == sk-oai-* ]] || { echo 'Clé MaaS attendue.' >&2; exit 1; }
+ printf '%s' "$key" > secrets/demo-user.ratelimit.apikey
+ chmod 600 secrets/demo-user.ratelimit.apikey
+fi
+unset key
+echo 'Clé(s) enregistrée(s) dans secrets/, sans affichage.'
